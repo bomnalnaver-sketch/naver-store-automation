@@ -5,10 +5,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PageHeader } from '@/components/shared/PageHeader/PageHeader';
+import { AdsTableClient } from '@/components/ads/AdsTableClient';
 import { fetchAdKeywordsWithStats, fetchAbTests } from '@/lib/queries/ads';
-import { formatNumber, formatCurrency, formatPercent, getRoasColorClass } from '@/lib/utils/formatters';
-import { cn } from '@/lib/utils';
 import './page.css';
 
 export default async function AdsPage() {
@@ -19,54 +18,18 @@ export default async function AdsPage() {
 
   return (
     <div className="ads-page">
-      <h1 className="ads-title">광고 성과</h1>
+      <PageHeader
+        title="광고 성과"
+        description="광고 키워드 성과 및 A/B 테스트 현황을 관리합니다"
+      />
 
       {/* 광고 키워드 테이블 */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">광고 키워드 (최근 7일 집계)</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>키워드</TableHead>
-                <TableHead>상태</TableHead>
-                <TableHead className="text-right">입찰가</TableHead>
-                <TableHead className="text-right">노출</TableHead>
-                <TableHead className="text-right">클릭</TableHead>
-                <TableHead className="text-right">전환</TableHead>
-                <TableHead className="text-right">ROAS</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {adKeywords.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                    광고 키워드가 없습니다
-                  </TableCell>
-                </TableRow>
-              ) : (
-                adKeywords.map((k) => (
-                  <TableRow key={k.id}>
-                    <TableCell className="font-medium">{k.keyword}</TableCell>
-                    <TableCell>
-                      <Badge variant={k.status === 'active' ? 'default' : 'secondary'} className="text-xs">
-                        {k.status === 'active' ? '활성' : k.status === 'paused' ? '일시중지' : '제거'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{formatCurrency(k.bid_amount)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(k.total_impressions)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(k.total_clicks)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(k.total_conversions)}</TableCell>
-                    <TableCell className={cn('text-right font-medium', getRoasColorClass(k.avg_roas))}>
-                      {k.avg_roas != null ? formatPercent(k.avg_roas, 0) : '-'}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+        <CardContent>
+          <AdsTableClient data={adKeywords} />
         </CardContent>
       </Card>
 

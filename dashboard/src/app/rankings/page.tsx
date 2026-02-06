@@ -6,6 +6,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/shared/PageHeader/PageHeader';
 import { AlertTimeline } from '@/components/rankings/AlertTimeline';
 import { fetchRankingAlerts, fetchProductsByPopularity } from '@/lib/queries/rankings';
 import { formatRank } from '@/lib/utils/formatters';
@@ -28,13 +29,14 @@ export default async function RankingsPage() {
 
   return (
     <div className="rankings-page">
-      <h1 className="rankings-title">순위 추적</h1>
+      <PageHeader
+        title="순위 추적"
+        description="키워드별 순위 변동을 추적합니다"
+      />
 
       <div className="rankings-grid">
-        {/* 알림 타임라인 */}
         <AlertTimeline alerts={alerts} />
 
-        {/* 인기도 단계별 그룹 */}
         <div className="rankings-groups">
           {stages.map(({ key, products }) => (
             <Card key={key}>

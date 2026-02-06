@@ -1,0 +1,37 @@
+.budget-tracker-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.budget-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.budget-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.budget-item-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.budget-item-value {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-danger [data-slot="progress-indicator"] {
+  background: oklch(0.60 0.22 25);
+}
+
+.budget-warning [data-slot="progress-indicator"] {
+  background: oklch(0.70 0.18 60);
+}

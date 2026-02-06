@@ -6,12 +6,11 @@
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PageHeader } from '@/components/shared/PageHeader/PageHeader';
+import { ProductKeywordsTableClient } from '@/components/products/ProductKeywordsTableClient';
+import { ProductRankChart } from '@/components/products/ProductRankChart';
 import { fetchProductById, fetchProductKeywords, fetchProductRankings } from '@/lib/queries/products';
-import { TypeBadge } from '@/components/shared/TypeBadge';
-import { ColorBadge } from '@/components/shared/ColorBadge';
-import { RankTrendChart } from '@/components/products/RankTrendChart';
-import { formatNumber, formatRank } from '@/lib/utils/formatters';
+import { formatRank } from '@/lib/utils/formatters';
 import { POPULARITY_STAGE_LABELS, POPULARITY_STAGE_COLORS } from '@/lib/constants/colors';
 import type { PopularityStage } from '@/lib/supabase/types';
 import { cn } from '@/lib/utils';
@@ -31,7 +30,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="product-detail-page">
-      <h1 className="product-detail-title">{product.product_name}</h1>
+      <PageHeader
+        title={product.product_name}
+        description={product.category_name ?? '카테고리 미지정'}
+      />
 
       {/* 기본 정보 */}
       <Card>
@@ -71,40 +73,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       {/* 키워드 목록 */}
       <Card>
         <CardHeader><CardTitle className="text-base">연결 키워드 ({keywords.length}개)</CardTitle></CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>키워드</TableHead>
-                <TableHead>유형</TableHead>
-                <TableHead>색깔</TableHead>
-                <TableHead className="text-right">월간 검색량</TableHead>
-                <TableHead>배치</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {keywords.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">연결된 키워드가 없습니다</TableCell>
-                </TableRow>
-              ) : (
-                keywords.map((k) => (
-                  <TableRow key={k.id}>
-                    <TableCell className="font-medium">{k.keyword}</TableCell>
-                    <TableCell><TypeBadge type={k.keyword_type} /></TableCell>
-                    <TableCell><ColorBadge color={k.color_class} /></TableCell>
-                    <TableCell className="text-right">{formatNumber(k.monthly_total_search)}</TableCell>
-                    <TableCell className="text-sm">{k.placement}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+        <CardContent>
+          <ProductKeywordsTableClient data={keywords} />
         </CardContent>
       </Card>
 
       {/* 순위 트렌드 */}
-      <RankTrendChart data={rankings} />
+      <ProductRankChart data={rankings} />
     </div>
   );
 }

@@ -3,18 +3,26 @@
  * @description 키워드 분석 페이지
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { TypeBadge } from '@/components/shared/TypeBadge';
-import { ColorBadge } from '@/components/shared/ColorBadge';
-import { ColorDistributionChart } from '@/components/keywords/ColorDistributionChart';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/shared/PageHeader/PageHeader';
+import { KeywordsTableClient } from '@/components/keywords/KeywordsTableClient';
+import { DonutChartCard } from '@/components/charts/DonutChartCard';
 import { fetchKeywords, fetchKeywordTypeCounts, fetchColorCounts } from '@/lib/queries/keywords';
 import { formatNumber } from '@/lib/utils/formatters';
-import { KEYWORD_TYPE_LABELS, KEYWORD_TYPE_COLORS } from '@/lib/constants/colors';
-import type { KeywordType } from '@/lib/supabase/types';
+import { KEYWORD_TYPE_LABELS, KEYWORD_TYPE_COLORS, COLOR_CLASS_LABELS } from '@/lib/constants/colors';
+import type { KeywordType, ColorClass } from '@/lib/supabase/types';
+import type { ChartConfig } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import './page.css';
+
+const colorChartConfig: ChartConfig = {
+  yellow: { label: '상품명전용', color: 'oklch(0.80 0.18 90)' },
+  gray: { label: '카테고리', color: 'oklch(0.60 0.02 264)' },
+  green: { label: '속성', color: 'oklch(0.65 0.18 145)' },
+  blue: { label: '태그', color: 'oklch(0.60 0.18 240)' },
+  orange: { label: '혼합(AI)', color: 'oklch(0.70 0.18 50)' },
+};
 
 export default async function KeywordsPage() {
   const [keywords, typeCounts, colorCounts] = await Promise.all([
@@ -24,12 +32,20 @@ export default async function KeywordsPage() {
   ]);
 
   const typeEntries = Object.entries(typeCounts) as [KeywordType, number][];
+  const colorData = (Object.entries(colorCounts) as [ColorClass, number][])
+    .map(([name, value]) => ({
+      name,
+      value,
+      fill: colorChartConfig[name]?.color,
+    }));
 
   return (
     <div className="keywords-page">
-      <h1 className="keywords-title">키워드 분석</h1>
+      <PageHeader
+        title="키워드 분석"
+        description="키워드 유형 및 색깔 분류 현황을 확인합니다"
+      />
 
-      {/* 유형별 통계 카드 */}
       <div className="keywords-type-grid">
         {typeEntries.map(([type, count]) => (
           <Card key={type}>
@@ -43,45 +59,15 @@ export default async function KeywordsPage() {
         ))}
       </div>
 
-      {/* 색깔 분포 차트 */}
-      <ColorDistributionChart data={colorCounts} />
+      <DonutChartCard
+        title="색깔 분류 분포"
+        data={colorData}
+        config={colorChartConfig}
+      />
 
-      {/* 키워드 테이블 */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">전체 키워드 ({keywords.length}개)</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>키워드</TableHead>
-                <TableHead>유형</TableHead>
-                <TableHead>색깔</TableHead>
-                <TableHead className="text-right">월간 검색량</TableHead>
-                <TableHead>경쟁지수</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {keywords.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                    등록된 키워드가 없습니다
-                  </TableCell>
-                </TableRow>
-              ) : (
-                keywords.map((k) => (
-                  <TableRow key={k.id}>
-                    <TableCell className="font-medium">{k.keyword}</TableCell>
-                    <TableCell><TypeBadge type={k.keyword_type} /></TableCell>
-                    <TableCell><ColorBadge color={k.color_class} /></TableCell>
-                    <TableCell className="text-right">{formatNumber(k.monthly_total_search)}</TableCell>
-                    <TableCell className="text-sm">{k.competition_index ?? '-'}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+        <CardContent className="pt-6">
+          <KeywordsTableClient data={keywords} />
         </CardContent>
       </Card>
     </div>

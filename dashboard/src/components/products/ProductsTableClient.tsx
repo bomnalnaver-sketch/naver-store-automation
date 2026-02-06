@@ -1,0 +1,94 @@
+/**
+ * @file ProductsTableClient.tsx
+ * @description 상품 목록 DataTable 클라이언트 컴포넌트
+ */
+
+'use client';
+
+import Link from 'next/link';
+import { type ColumnDef } from '@tanstack/react-table';
+import { Badge } from '@/components/ui/badge';
+import { DataTable } from '@/components/shared/DataTable/DataTable';
+import { DataTableColumnHeader } from '@/components/shared/DataTable/DataTableColumnHeader';
+import type { ProductRow } from '@/lib/supabase/types';
+import type { PopularityStage } from '@/lib/supabase/types';
+import { POPULARITY_STAGE_LABELS, POPULARITY_STAGE_COLORS } from '@/lib/constants/colors';
+import { formatRank, formatDateFull } from '@/lib/utils/formatters';
+import { cn } from '@/lib/utils';
+
+const columns: ColumnDef<ProductRow>[] = [
+  {
+    accessorKey: 'product_name',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="상품명" />,
+    cell: ({ row }) => (
+      <Link
+        href={`/products/${row.original.id}`}
+        className="font-medium text-primary hover:underline"
+      >
+        {row.original.product_name}
+      </Link>
+    ),
+  },
+  {
+    accessorKey: 'category_name',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="카테고리" />,
+    cell: ({ row }) => (
+      <span className="text-sm text-muted-foreground">
+        {row.original.category_name ?? '-'}
+      </span>
+    ),
+  },
+  {
+    accessorKey: 'current_popularity_stage',
+    header: '인기도',
+    cell: ({ row }) => {
+      const stage = row.original.current_popularity_stage as PopularityStage | null;
+      if (!stage) return '-';
+      return (
+        <Badge variant="secondary" className={cn('text-xs', POPULARITY_STAGE_COLORS[stage])}>
+          {POPULARITY_STAGE_LABELS[stage]}
+        </Badge>
+      );
+    },
+  },
+  {
+    accessorKey: 'representative_keyword',
+    header: '대표 키워드',
+    cell: ({ row }) => (
+      <span className="text-sm">{row.original.representative_keyword ?? '-'}</span>
+    ),
+  },
+  {
+    accessorKey: 'representative_keyword_rank',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="대표 순위" />,
+    cell: ({ row }) => (
+      <span className="text-sm text-right block">
+        {formatRank(row.original.representative_keyword_rank)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: 'created_at',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="등록일" />,
+    cell: ({ row }) => (
+      <span className="text-sm text-muted-foreground">
+        {formatDateFull(row.original.created_at)}
+      </span>
+    ),
+  },
+];
+
+interface ProductsTableClientProps {
+  data: ProductRow[];
+}
+
+export function ProductsTableClient({ data }: ProductsTableClientProps) {
+  return (
+    <DataTable
+      columns={columns}
+      data={data}
+      searchKey="product_name"
+      searchPlaceholder="상품명 검색..."
+    />
+  );
+}

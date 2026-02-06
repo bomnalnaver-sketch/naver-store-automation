@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { AppSidebar } from '@/components/layout/AppSidebar';
 import { Header } from '@/components/layout/Header';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import './globals.css';
 import './layout.css';
 
@@ -30,15 +31,15 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider>
-          <div className="app-layout">
-            <Sidebar />
-            <div className="app-main">
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset>
               <Header />
               <main className="app-content">
                 {children}
               </main>
-            </div>
-          </div>
+            </SidebarInset>
+          </SidebarProvider>
         </ThemeProvider>
       </body>
     </html>

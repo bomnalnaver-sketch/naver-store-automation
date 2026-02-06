@@ -6,6 +6,7 @@
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/shared/PageHeader/PageHeader';
 import { fetchAiDecisionById, fetchAiDecisionResults } from '@/lib/queries/ai-decisions';
 import { formatNumber, formatDateFull } from '@/lib/utils/formatters';
 import './page.css';
@@ -19,7 +20,10 @@ export default async function AiDecisionDetailPage({ params }: { params: Promise
 
   return (
     <div className="ai-detail-page">
-      <h1 className="ai-detail-title">AI 의사결정 #{decision.id}</h1>
+      <PageHeader
+        title={`AI 의사결정 #${decision.id}`}
+        description={`${decision.decision_type} · ${formatDateFull(decision.created_at)}`}
+      />
 
       {/* 요약 정보 */}
       <Card>

@@ -80,14 +80,14 @@ export const POPULARITY_STAGE_COLORS: Record<PopularityStage, string> = {
   stable: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
 };
 
-/** 차트 색상 팔레트 */
+/** 차트 색상 팔레트 (CSS 변수 기반) */
 export const CHART_COLORS = [
-  '#3b82f6', // blue
-  '#10b981', // emerald
-  '#f59e0b', // amber
-  '#8b5cf6', // violet
-  '#ef4444', // red
-  '#06b6d4', // cyan
-  '#f97316', // orange
-  '#ec4899', // pink
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+  'oklch(0.60 0.18 200)',
+  'oklch(0.70 0.18 130)',
+  'oklch(0.65 0.22 340)',
 ];
