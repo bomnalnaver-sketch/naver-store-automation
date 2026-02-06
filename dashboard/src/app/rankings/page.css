@@ -1,0 +1,48 @@
+.rankings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.rankings-title {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.rankings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.rankings-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rankings-product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rankings-product-item {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--foreground);
+  transition: background 0.15s;
+}
+
+.rankings-product-item:hover {
+  background: var(--accent);
+}
+
+@media (max-width: 768px) {
+  .rankings-grid {
+    grid-template-columns: 1fr;
+  }
+}

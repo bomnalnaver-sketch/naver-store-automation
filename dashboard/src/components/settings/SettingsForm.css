@@ -1,0 +1,40 @@
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-item:last-child {
+  border-bottom: none;
+}
+
+.settings-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-item-key {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: monospace;
+}
+
+.settings-item-desc {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.settings-item-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

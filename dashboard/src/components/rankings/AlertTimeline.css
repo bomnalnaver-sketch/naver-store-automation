@@ -1,0 +1,36 @@
+.alert-timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-direction: row;
+}
+
+.alert-timeline-scroll {
+  height: 500px;
+}
+
+.alert-timeline-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.alert-timeline-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+}
+
+.alert-timeline-unread {
+  background: var(--accent);
+}
+
+.alert-read-btn {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  font-size: 12px;
+  height: 24px;
+}

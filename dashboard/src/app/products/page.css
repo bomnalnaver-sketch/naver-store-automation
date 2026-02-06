@@ -1,0 +1,24 @@
+.products-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.products-title {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.products-row:hover {
+  background: var(--accent);
+}
+
+.products-name-link {
+  font-weight: 500;
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.products-name-link:hover {
+  text-decoration: underline;
+}

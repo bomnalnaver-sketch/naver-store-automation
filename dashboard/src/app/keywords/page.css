@@ -1,0 +1,28 @@
+.keywords-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.keywords-title {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.keywords-type-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .keywords-type-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .keywords-type-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
