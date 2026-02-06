@@ -107,6 +107,14 @@ export const API_CONFIG = {
     /** Rate limit 버퍼 (안전 마진) */
     RATE_LIMIT_BUFFER: 0.9,
   },
+
+  /** 네이버 쇼핑 검색 API Rate Limit */
+  NAVER_SHOPPING: {
+    /** 초당 최대 요청 수 (일일 25,000회 한도 별도 관리) */
+    MAX_REQUESTS_PER_SECOND: 10,
+    /** Rate limit 버퍼 (안전 마진) */
+    RATE_LIMIT_BUFFER: 0.9,
+  },
 } as const;
 
 /**
@@ -176,6 +184,8 @@ export function validateEnv() {
     'DATABASE_URL',
     'NAVER_COMMERCE_CLIENT_ID',
     'NAVER_COMMERCE_CLIENT_SECRET',
+    'NAVER_SHOPPING_CLIENT_ID',
+    'NAVER_SHOPPING_CLIENT_SECRET',
     'NAVER_SEARCH_AD_API_KEY',
     'NAVER_SEARCH_AD_SECRET_KEY',
     'NAVER_SEARCH_AD_CUSTOMER_ID',
@@ -194,6 +204,123 @@ export function validateEnv() {
 }
 
 /**
+ * 쇼핑 검색 API 설정
+ */
+export const SHOPPING_API_CONFIG = {
+  /** 일일 API 호출 한도 */
+  DAILY_CALL_LIMIT: 25000,
+  /** 색깔 분류 분석 시 조회할 상품 수 */
+  COLOR_ANALYSIS_DISPLAY: 40,
+  /** 순위 추적 시 페이지당 조회 수 (API 최대값) */
+  RANK_CHECK_DISPLAY: 100,
+  /** API 호출 예산 분배 */
+  API_BUDGET: {
+    RANKING: 15000,
+    COLOR_ANALYSIS: 5000,
+    RESERVE: 5000,
+  },
+} as const;
+
+/**
+ * 키워드 분류 설정
+ */
+export const KEYWORD_CLASSIFICATION_CONFIG = {
+  /** 색깔 분류 임계값 (%) */
+  COLOR_THRESHOLDS: {
+    /** 🟡 상품명전용: title 포함율 >= 95% */
+    YELLOW_TITLE_RATIO: 95,
+    /** 🟢 속성: title 포함율 >= 50% */
+    GREEN_TITLE_RATIO: 50,
+    /** ⚪ 카테고리: category 포함율 >= 80% */
+    GRAY_CATEGORY_RATIO: 80,
+    /** 🔵 태그: title 포함율 상한 */
+    BLUE_TITLE_MAX: 50,
+    /** 🔵 태그: category 포함율 상한 */
+    BLUE_CATEGORY_MAX: 30,
+  },
+  /** 동의어 판별 허용 오차 (등록상품수 차이) */
+  SYNONYM_TOLERANCE: 0,
+  /** 등록상품수 비교 시 동일 판정 허용 비율 (5% 이내면 동일) */
+  REGISTERED_COUNT_TOLERANCE_RATIO: 0.05,
+} as const;
+
+/**
+ * 상품명 최적화 점수 설정
+ */
+export const SCORING_CONFIG = {
+  /** 기본 점수 */
+  BASE_SCORE: 100,
+  /** 등급 임계값 */
+  GRADE_THRESHOLDS: {
+    S: 95,
+    A: 85,
+    B: 70,
+    C: 60,
+  },
+  /** 감점 배점 */
+  PENALTIES: {
+    REDUNDANT_KEYWORD: -5,
+    SYNONYM_DUPLICATE: -3,
+    INTEGRAL_SPLIT: -10,
+    ORDER_FIXED_WRONG: -10,
+    ORDER_FIXED_INSERT: -10,
+    COMPOSITE_REPEAT: -3,
+  },
+  /** 가점 배점 */
+  BONUSES: {
+    COMPOSITE_SPACE_SAVING_PER_EXTRA: 3,
+    HIGH_KEYWORD_DENSITY: 10,
+    INTEGRAL_CORRECT_PER: 2,
+    KEYWORD_DENSITY_THRESHOLD: 0.9,
+  },
+} as const;
+
+/**
+ * 순위 추적 설정
+ */
+export const RANKING_CONFIG = {
+  /** 순위 추적 최대 범위 */
+  RANK_CHECK_LIMIT: 1000,
+  /** 페이지당 표시 수 (API 고정값) */
+  DISPLAY_PER_REQUEST: 100,
+  /** API 호출 간 딜레이 (ms) */
+  RATE_LIMIT_DELAY: 100,
+  /** 순위 변동 알림 기준 */
+  RANK_CHANGE_ALERT_THRESHOLD: 50,
+} as const;
+
+/**
+ * 인기도 단계별 전략 설정
+ */
+export const POPULARITY_STAGE_CONFIG = {
+  STAGES: {
+    /** 극초반: 대표키워드 순위 500위+ */
+    EXTREME_EARLY: {
+      MIN_RANK: 500,
+      MAX_SEARCH_VOLUME_FOR_YELLOW: 1000,
+      ALLOW_GREEN: false,
+      ALLOW_GRAY: false,
+    },
+    /** 성장기: 대표키워드 순위 100~500위 */
+    GROWTH: {
+      MIN_RANK: 100,
+      MAX_RANK: 500,
+      MAX_SEARCH_VOLUME_FOR_YELLOW: 5000,
+      ALLOW_GREEN: true,
+      ALLOW_GRAY: false,
+    },
+    /** 안정기: 대표키워드 순위 100위 이내 */
+    STABLE: {
+      MAX_RANK: 100,
+      ALLOW_GREEN: true,
+      ALLOW_GRAY: true,
+    },
+  },
+  /** 인기도 급변 감지 임계값 (순위 변동) */
+  SURGE_DETECTION_THRESHOLD: 50,
+} as const;
+
+/**
  * 전체 설정 객체
  */
 export const APP_CONFIG = {
@@ -205,4 +332,9 @@ export const APP_CONFIG = {
   LOG: LOG_CONFIG,
   SLACK: SLACK_CONFIG,
   SCHEDULE: SCHEDULE_CONFIG,
+  SHOPPING_API: SHOPPING_API_CONFIG,
+  KEYWORD_CLASSIFICATION: KEYWORD_CLASSIFICATION_CONFIG,
+  SCORING: SCORING_CONFIG,
+  RANKING: RANKING_CONFIG,
+  POPULARITY_STAGE: POPULARITY_STAGE_CONFIG,
 } as const;

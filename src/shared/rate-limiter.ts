@@ -101,6 +101,13 @@ export const naverCommerceRateLimiter = new RateLimiter(2, 0.9);
 export const naverSearchAdRateLimiter = new RateLimiter(10, 0.9);
 
 /**
+ * 네이버 쇼핑 검색 API Rate Limiter 싱글톤
+ * 초당 10회 제한 (안전 마진 적용 시 9회)
+ * 주의: 일일 25,000회 한도는 ApiBudgetTracker에서 별도 관리
+ */
+export const naverShoppingRateLimiter = new RateLimiter(10, 0.9);
+
+/**
  * Rate Limiter 적용 데코레이터
  */
 export function withRateLimit<T>(

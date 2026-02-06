@@ -40,6 +40,16 @@ export function createCommerceAuthHeaders(): Record<string, string> {
 }
 
 /**
+ * 쇼핑 검색 API 인증 헤더 생성
+ */
+export function createShoppingSearchAuthHeaders(): Record<string, string> {
+  return {
+    'X-Naver-Client-Id': env.NAVER_SHOPPING_CLIENT_ID,
+    'X-Naver-Client-Secret': env.NAVER_SHOPPING_CLIENT_SECRET,
+  };
+}
+
+/**
  * 검색광고 API 인증 헤더 생성
  */
 export function createSearchAdAuthHeaders(): Record<string, string> {
