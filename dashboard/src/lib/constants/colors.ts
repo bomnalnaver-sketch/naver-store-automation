@@ -58,12 +58,12 @@ export const RANK_ALERT_LABELS: Record<RankAlertType, string> = {
   EXIT: '순위 이탈',
 };
 
-/** 순위 알림 유형 색상 */
+/** 순위 알림 유형 색상 (그라데이션 배지 스타일) */
 export const RANK_ALERT_COLORS: Record<RankAlertType, string> = {
-  SURGE: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-  DROP: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-  ENTER: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-  EXIT: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+  SURGE: 'alert-badge-surge',
+  DROP: 'alert-badge-drop',
+  ENTER: 'alert-badge-enter',
+  EXIT: 'alert-badge-exit',
 };
 
 /** 인기도 단계 라벨 */

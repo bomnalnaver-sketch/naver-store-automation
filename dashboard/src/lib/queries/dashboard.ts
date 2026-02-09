@@ -135,7 +135,7 @@ export async function fetchApiBudgetStatus(): Promise<ApiBudgetStatus> {
   const supabase = createServerSupabase();
   const today = new Date().toISOString().split('T')[0];
 
-  const [settingsRes, usageRes] = await Promise.all([
+  const [settingsRes, rankingUsageRes, colorUsageRes] = await Promise.all([
     supabase
       .from('settings')
       .select('key, value')
@@ -146,6 +146,13 @@ export async function fetchApiBudgetStatus(): Promise<ApiBudgetStatus> {
       .from('keyword_ranking_daily')
       .select('api_calls')
       .gte('checked_at', `${today}T00:00:00`),
+
+    // 오늘 사용량: 색깔 분류 API 호출 수
+    supabase
+      .from('keyword_analysis_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('analysis_type', 'color_classification')
+      .gte('created_at', `${today}T00:00:00`),
   ]);
 
   const settings = new Map<string, number>();
@@ -153,10 +160,15 @@ export async function fetchApiBudgetStatus(): Promise<ApiBudgetStatus> {
     settings.set(row.key, Number(row.value) || 0);
   }
 
-  const totalApiUsed = (usageRes.data ?? []).reduce(
+  const rankingApiUsed = (rankingUsageRes.data ?? []).reduce(
     (acc, r) => acc + (Number(r.api_calls) || 0),
     0
   );
+
+  // 색깔 분류: 레코드 수 = API 호출 수 (각 분류당 1회 호출)
+  const colorApiUsed = colorUsageRes.count ?? 0;
+
+  const totalApiUsed = rankingApiUsed + colorApiUsed;
 
   const totalLimit = settings.get('shopping_api_daily_budget') ?? 25000;
   const rankingLimit = settings.get('ranking_api_budget') ?? 15000;
@@ -164,7 +176,7 @@ export async function fetchApiBudgetStatus(): Promise<ApiBudgetStatus> {
 
   return {
     total: { used: totalApiUsed, limit: totalLimit },
-    ranking: { used: Math.min(totalApiUsed, rankingLimit), limit: rankingLimit },
-    colorAnalysis: { used: 0, limit: colorLimit },
+    ranking: { used: rankingApiUsed, limit: rankingLimit },
+    colorAnalysis: { used: colorApiUsed, limit: colorLimit },
   };
 }

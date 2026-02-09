@@ -334,16 +334,22 @@ export async function saveColorClassification(
       [result.colorClass, result.titleMatchRatio, result.categoryMatchRatio, keywordId]
     );
 
-    // 분석 로그 기록
+    // 분석 로그 기록 (API 예산 추적에 사용됨)
     await db.query(
       `INSERT INTO keyword_analysis_logs (
-         keyword_id, analysis_type, result_data, parent_log_id, created_at
-       ) VALUES ($1, $2, $3, $4, NOW())`,
+         keyword_id, analysis_type, new_color_class,
+         title_match_count, category_match_count, total_products_analyzed,
+         title_match_ratio, category_match_ratio, api_calls_used, created_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, NOW())`,
       [
         keywordId,
         'color_classification',
-        JSON.stringify(result),
-        analysisLogId ?? null,
+        result.colorClass,
+        result.titleMatchCount,
+        result.categoryMatchCount,
+        result.totalAnalyzed,
+        result.titleMatchRatio,
+        result.categoryMatchRatio,
       ]
     );
 
@@ -373,13 +379,15 @@ export async function saveAnalysisSnapshot(
   analysisLogId?: number
 ): Promise<void> {
   try {
+    const today = new Date().toISOString().split('T')[0];
     await db.query(
       `INSERT INTO keyword_analysis_snapshots (
-         keyword_id, snapshot_data, analysis_log_id, created_at
-       ) VALUES ($1, $2, $3, NOW())`,
+         keyword_id, search_results, snapshot_date, analysis_log_id, created_at
+       ) VALUES ($1, $2, $3, $4, NOW())`,
       [
         keywordId,
         JSON.stringify(items),
+        today,
         analysisLogId ?? null,
       ]
     );

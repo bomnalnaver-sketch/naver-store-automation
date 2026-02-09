@@ -8,8 +8,13 @@
 }
 
 .alert-feed-item {
-  padding: 12px 16px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--border);
+  transition: background-color 0.15s ease;
+}
+
+.alert-feed-item:hover {
+  background-color: var(--muted);
 }
 
 .alert-feed-item:last-child {
@@ -20,7 +25,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .alert-feed-time {
@@ -31,17 +36,44 @@
 .alert-feed-keyword {
   font-size: 14px;
   font-weight: 600;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  color: var(--foreground);
 }
 
 .alert-feed-rank-change {
   font-size: 13px;
   color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
 }
 
 .alert-feed-empty {
   text-align: center;
-  padding: 40px 0;
+  padding: 60px 20px;
   color: var(--muted-foreground);
   font-size: 14px;
+}
+
+/* Alert type badge colors (override with gradients) */
+.alert-badge-surge {
+  background: linear-gradient(135deg, #22c55e 0%, #10b981 100%) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.alert-badge-drop {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.alert-badge-enter {
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.alert-badge-exit {
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%) !important;
+  color: white !important;
+  border: none !important;
 }

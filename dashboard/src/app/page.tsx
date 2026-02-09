@@ -50,24 +50,28 @@ export default async function DashboardPage() {
           value={formatNumber(kpi.totalProducts)}
           description="활성 상품"
           icon={Package}
+          variant="blue"
         />
         <MetricCard
           title="활성 키워드"
           value={formatNumber(kpi.activeKeywords)}
           description="추적 중"
           icon={Search}
+          variant="purple"
         />
         <MetricCard
           title="7일 평균 ROAS"
           value={kpi.avgRoas7d != null ? formatPercent(kpi.avgRoas7d, 0) : '-'}
           description="최근 7일"
           icon={TrendingUp}
+          variant="teal"
         />
         <MetricCard
           title="미확인 알림"
           value={formatNumber(kpi.unreadAlerts)}
           description="순위 변동"
           icon={Bell}
+          variant="coral"
         />
       </div>
 
