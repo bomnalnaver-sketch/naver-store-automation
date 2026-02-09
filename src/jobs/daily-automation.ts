@@ -20,7 +20,7 @@ import { analyzeProductName } from '@/services/product-name-optimizer';
 /** 일일 자동화에서 사용하는 상품 정보 (DB products 테이블 부분 타입) */
 interface Product {
   id: number;
-  name: string;
+  product_name: string;
   is_active: boolean;
 }
 
@@ -237,7 +237,7 @@ async function runPhase3Optimization(
   try {
     for (const product of products) {
       try {
-        await analyzeProductName(product.id, product.name);
+        await analyzeProductName(product.id, product.product_name);
         reports++;
       } catch (error: any) {
         errors++;
@@ -429,3 +429,14 @@ function buildResult(
     summary,
   };
 }
+
+// 메인 실행
+runDailyAutomation()
+  .then((result) => {
+    console.log('일일 자동화 완료:', JSON.stringify(result, null, 2));
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('일일 자동화 실패:', error);
+    process.exit(1);
+  });
