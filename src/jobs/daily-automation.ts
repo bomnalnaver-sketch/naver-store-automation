@@ -233,12 +233,10 @@ async function runPhase2LifecycleUpdate(
 
   try {
     // 오늘 날짜 기준 순위 결과 조회
-    const today = new Date().toISOString().split('T')[0];
     const rankResultsQuery = await db.query(
       `SELECT keyword, rank, product_id
        FROM keyword_ranking_daily
-       WHERE date = $1`,
-      [today]
+       WHERE checked_at::date = CURRENT_DATE`
     );
 
     // 순위 결과를 Map으로 변환

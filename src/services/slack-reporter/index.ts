@@ -163,22 +163,21 @@ async function collectRankingChanges(reportData: DetailedReportData): Promise<vo
     const result = await db.query(`
       WITH today_ranks AS (
         SELECT
-          krs.keyword_id,
-          k.keyword,
+          krd.product_id,
+          krd.keyword,
           p.product_name,
-          krs.rank as current_rank,
-          krs.created_at::date as check_date
-        FROM keyword_rank_snapshots krs
-        JOIN keywords k ON k.id = krs.keyword_id
-        JOIN products p ON p.id = k.product_id
-        WHERE krs.created_at::date = CURRENT_DATE
+          krd.rank as current_rank
+        FROM keyword_ranking_daily krd
+        JOIN products p ON p.naver_product_id = krd.product_id
+        WHERE krd.checked_at::date = CURRENT_DATE
       ),
       yesterday_ranks AS (
         SELECT
-          krs.keyword_id,
-          krs.rank as previous_rank
-        FROM keyword_rank_snapshots krs
-        WHERE krs.created_at::date = CURRENT_DATE - INTERVAL '1 day'
+          krd.product_id,
+          krd.keyword,
+          krd.rank as previous_rank
+        FROM keyword_ranking_daily krd
+        WHERE krd.checked_at::date = CURRENT_DATE - INTERVAL '1 day'
       )
       SELECT
         t.product_name,
@@ -187,7 +186,7 @@ async function collectRankingChanges(reportData: DetailedReportData): Promise<vo
         t.current_rank,
         COALESCE(y.previous_rank, 999) - COALESCE(t.current_rank, 999) as change
       FROM today_ranks t
-      LEFT JOIN yesterday_ranks y ON y.keyword_id = t.keyword_id
+      LEFT JOIN yesterday_ranks y ON y.product_id = t.product_id AND y.keyword = t.keyword
       WHERE y.previous_rank IS DISTINCT FROM t.current_rank
       ORDER BY ABS(COALESCE(y.previous_rank, 999) - COALESCE(t.current_rank, 999)) DESC
       LIMIT 20
@@ -266,23 +265,21 @@ async function collectABTestStatus(reportData: DetailedReportData): Promise<void
       SELECT
         p.product_name,
         abt.test_type,
-        abt.variant_a,
-        abt.variant_b,
         abt.status,
         abt.winner,
-        EXTRACT(DAY FROM NOW() - abt.created_at)::int as days_running
-      FROM ab_tests abt
+        EXTRACT(DAY FROM NOW() - abt.test_started_at)::int as days_running
+      FROM product_ab_tests abt
       JOIN products p ON p.id = abt.product_id
       WHERE abt.status = 'running'
-      ORDER BY abt.created_at DESC
+      ORDER BY abt.test_started_at DESC
       LIMIT 5
     `);
 
     reportData.abTests.active = activeResult.rows.map((row) => ({
       productName: truncate(row.product_name, 20),
       testType: row.test_type,
-      variantA: truncate(row.variant_a, 15),
-      variantB: truncate(row.variant_b, 15),
+      variantA: 'A',
+      variantB: 'B',
       status: row.status,
       winner: row.winner,
       daysRunning: row.days_running || 0,
@@ -293,23 +290,21 @@ async function collectABTestStatus(reportData: DetailedReportData): Promise<void
       SELECT
         p.product_name,
         abt.test_type,
-        abt.variant_a,
-        abt.variant_b,
         abt.status,
         abt.winner,
-        EXTRACT(DAY FROM abt.ended_at - abt.created_at)::int as days_running
-      FROM ab_tests abt
+        EXTRACT(DAY FROM abt.test_ended_at - abt.test_started_at)::int as days_running
+      FROM product_ab_tests abt
       JOIN products p ON p.id = abt.product_id
-      WHERE abt.ended_at::date = CURRENT_DATE
-      ORDER BY abt.ended_at DESC
+      WHERE abt.test_ended_at::date = CURRENT_DATE
+      ORDER BY abt.test_ended_at DESC
       LIMIT 5
     `);
 
     reportData.abTests.completedToday = completedResult.rows.map((row) => ({
       productName: truncate(row.product_name, 20),
       testType: row.test_type,
-      variantA: truncate(row.variant_a, 15),
-      variantB: truncate(row.variant_b, 15),
+      variantA: 'A',
+      variantB: 'B',
       status: row.status,
       winner: row.winner,
       daysRunning: row.days_running || 0,
@@ -324,10 +319,10 @@ async function collectABTestStatus(reportData: DetailedReportData): Promise<void
  */
 async function collectAIDecisions(reportData: DetailedReportData): Promise<void> {
   try {
-    // 대기 중인 의사결정 수
+    // 대기 중인 의사결정 수 (ai_decision_results에서 pending 상태)
     const pendingResult = await db.query(`
       SELECT COUNT(*) as count
-      FROM ai_analysis_results
+      FROM ai_decision_results
       WHERE status = 'pending'
     `);
     reportData.aiDecisions.pendingCount = parseInt(pendingResult.rows[0]?.count || '0', 10);
@@ -335,23 +330,24 @@ async function collectAIDecisions(reportData: DetailedReportData): Promise<void>
     // 오늘 실행된 의사결정
     const executedResult = await db.query(`
       SELECT
-        p.product_name,
-        aar.action_type,
-        aar.recommendation,
-        aar.status = 'executed' as executed
-      FROM ai_analysis_results aar
-      JOIN products p ON p.id = aar.product_id
-      WHERE aar.updated_at::date = CURRENT_DATE
-        AND aar.status IN ('executed', 'approved')
-      ORDER BY aar.updated_at DESC
+        adr.action_type,
+        adr.action_data,
+        adr.status,
+        ad.decision_type,
+        ad.created_at
+      FROM ai_decision_results adr
+      JOIN ai_decisions ad ON ad.id = adr.decision_id
+      WHERE ad.created_at::date = CURRENT_DATE
+        AND adr.status IN ('executed', 'approved')
+      ORDER BY ad.created_at DESC
       LIMIT 10
     `);
 
     reportData.aiDecisions.executedToday = executedResult.rows.map((row) => ({
-      productName: truncate(row.product_name, 20),
+      productName: truncate(row.decision_type, 20),
       actionType: row.action_type,
-      recommendation: truncate(row.recommendation, 30),
-      executed: row.executed,
+      recommendation: truncate(JSON.stringify(row.action_data).substring(0, 30), 30),
+      executed: row.status === 'executed',
     }));
   } catch (error: any) {
     logger.warn('AI 의사결정 현황 수집 실패', { error: error.message });
