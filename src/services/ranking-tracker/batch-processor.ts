@@ -20,6 +20,7 @@ import { RankCheckConfig, RankResult, BatchRankResult } from '@/types/keyword.ty
 interface ActiveProduct {
   id: number;
   naver_shopping_product_id: string | undefined;
+  representative_keyword: string | null;
 }
 
 /** 추적 대상 키워드 조회 결과 타입 */
@@ -111,7 +112,7 @@ export async function batchGetProductRanks(
  */
 async function getActiveProducts(): Promise<ActiveProduct[]> {
   return db.queryMany<ActiveProduct>(
-    `SELECT id, naver_shopping_product_id
+    `SELECT id, naver_shopping_product_id, representative_keyword
      FROM products
      WHERE excluded_from_test = false
        AND naver_shopping_product_id IS NOT NULL`
@@ -125,9 +126,9 @@ async function getActiveProducts(): Promise<ActiveProduct[]> {
  */
 async function getTrackedKeywords(productId: number): Promise<string[]> {
   const rows = await db.queryMany<TrackedKeyword>(
-    `SELECT km.keyword
+    `SELECT k.keyword
      FROM keyword_product_mapping kpm
-     JOIN keyword_master km ON km.id = kpm.keyword_id
+     JOIN keywords k ON k.id = kpm.keyword_id
      WHERE kpm.product_id = $1
        AND kpm.is_tracked = true`,
     [productId]
@@ -232,10 +233,19 @@ export async function collectDailyRankings(): Promise<DailyCollectionResult> {
     }
 
     // 추적 키워드 조회
-    const keywords = await getTrackedKeywords(product.id);
+    let keywords = await getTrackedKeywords(product.id);
+
+    // 추적 키워드가 없으면 대표 키워드 사용
+    if (keywords.length === 0 && product.representative_keyword) {
+      keywords = [product.representative_keyword];
+      logger.debug('추적 키워드 없음, 대표 키워드 사용', {
+        productId: product.id,
+        keyword: product.representative_keyword,
+      });
+    }
 
     if (keywords.length === 0) {
-      logger.debug('추적 키워드 없음, 건너뜀', { productId: product.id });
+      logger.debug('추적/대표 키워드 없음, 건너뜀', { productId: product.id });
       continue;
     }
 
