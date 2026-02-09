@@ -56,6 +56,9 @@ export interface ProductRow {
   current_popularity_stage: PopularityStage | null;
   representative_keyword: string | null;
   representative_keyword_rank: number | null;
+  weekly_orders: number | null;
+  weekly_sales: number | null;
+  weekly_sales_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }

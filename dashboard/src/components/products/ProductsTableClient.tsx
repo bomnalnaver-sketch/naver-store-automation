@@ -13,10 +13,28 @@ import { DataTableColumnHeader } from '@/components/shared/DataTable/DataTableCo
 import type { ProductRow } from '@/lib/supabase/types';
 import type { PopularityStage } from '@/lib/supabase/types';
 import { POPULARITY_STAGE_LABELS, POPULARITY_STAGE_COLORS } from '@/lib/constants/colors';
-import { formatRank, formatDateFull } from '@/lib/utils/formatters';
+import { formatRank, formatDateFull, formatNumber } from '@/lib/utils/formatters';
 import { cn } from '@/lib/utils';
 
 const columns: ColumnDef<ProductRow>[] = [
+  {
+    accessorKey: 'naver_product_id',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="상품 ID" />,
+    cell: ({ row }) => (
+      <span className="text-xs text-muted-foreground font-mono">
+        {row.original.naver_product_id ?? '-'}
+      </span>
+    ),
+  },
+  {
+    accessorKey: 'naver_shopping_product_id',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="쇼핑 ID" />,
+    cell: ({ row }) => (
+      <span className="text-xs text-muted-foreground font-mono">
+        {row.original.naver_shopping_product_id ?? '-'}
+      </span>
+    ),
+  },
   {
     accessorKey: 'product_name',
     header: ({ column }) => <DataTableColumnHeader column={column} title="상품명" />,
@@ -64,6 +82,24 @@ const columns: ColumnDef<ProductRow>[] = [
     cell: ({ row }) => (
       <span className="text-sm text-right block">
         {formatRank(row.original.representative_keyword_rank)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: 'weekly_orders',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="주간 주문" />,
+    cell: ({ row }) => (
+      <span className="text-sm text-right block font-medium">
+        {row.original.weekly_orders != null ? `${formatNumber(row.original.weekly_orders)}건` : '-'}
+      </span>
+    ),
+  },
+  {
+    accessorKey: 'weekly_sales',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="주간 매출" />,
+    cell: ({ row }) => (
+      <span className="text-sm text-right block">
+        {row.original.weekly_sales != null ? `${formatNumber(row.original.weekly_sales)}원` : '-'}
       </span>
     ),
   },

@@ -43,6 +43,21 @@ export interface CommerceProduct {
   }>;
 }
 
+/** 상품 검색 API 응답의 개별 상품 (카테고리 포함) */
+export interface CommerceProductSearchItem {
+  originProductNo: number;
+  channelProducts?: Array<{
+    originProductNo: number;
+    channelProductNo: number;
+    name: string;
+    statusType?: string;
+    salePrice?: number;
+    stockQuantity?: number;
+    categoryId?: string;
+    wholeCategoryName?: string;
+  }>;
+}
+
 export interface CommerceProductListResponse {
   data: {
     products: CommerceProduct[];

@@ -6,6 +6,8 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader/PageHeader';
 import { ProductsTableClient } from '@/components/products/ProductsTableClient';
+import { ProductRegisterModal } from '@/components/products/ProductRegisterModal';
+import { ProductRefreshButton } from '@/components/products/ProductRefreshButton';
 import { fetchProducts } from '@/lib/queries/products';
 import './page.css';
 
@@ -14,10 +16,16 @@ export default async function ProductsPage() {
 
   return (
     <div className="products-page">
-      <PageHeader
-        title="상품 관리"
-        description={`총 ${products.length}개 활성 상품`}
-      />
+      <div className="flex items-center justify-between mb-6">
+        <PageHeader
+          title="상품 관리"
+          description={`총 ${products.length}개 활성 상품`}
+        />
+        <div className="flex items-center gap-2">
+          <ProductRefreshButton />
+          <ProductRegisterModal />
+        </div>
+      </div>
 
       <Card>
         <CardContent className="pt-6">

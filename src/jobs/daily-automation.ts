@@ -2,7 +2,8 @@
  * @file daily-automation.ts
  * @description 일일 자동화 메인 작업 (키워드 발굴/선정/라이프사이클 + 분석 + 최적화)
  * @responsibilities
- * - 8 Phase 파이프라인 실행
+ * - 9 Phase 파이프라인 실행
+ * - Phase 0: 상품 동기화 (Commerce API에서 상품 목록 갱신)
  * - Phase 1: 순위 수집
  * - Phase 2: 키워드 라이프사이클 업데이트
  * - Phase 3: 키워드 발굴
@@ -24,6 +25,7 @@ import { selectKeywords } from '@/services/keyword-selector';
 import {
   runDailyLifecycleUpdate,
   handleTestTimeouts,
+  batchUpdateRepresentativeKeywords,
 } from '@/services/keyword-lifecycle';
 import { KeywordCandidate, RankResult } from '@/types/keyword.types';
 import {
@@ -37,6 +39,7 @@ import {
   sendSlackDetailedReport,
 } from '@/services/slack-reporter';
 import { batchUpdateShoppingIds } from '@/services/product-manager';
+import { syncProducts } from '@/services/product-sync';
 
 /** 일일 자동화에서 사용하는 상품 정보 (DB products 테이블 부분 타입) */
 interface Product {
@@ -132,6 +135,25 @@ export async function runDailyAutomation(): Promise<DailyAutomationResult> {
     return buildResult(startedAt, startTime, phases, summary);
   }
 
+  // Phase 0: 상품 동기화 (Commerce API)
+  phases.push(await runPhase0ProductSync(summary));
+
+  // Phase 0 이후 상품 목록 다시 조회 (신규 상품 반영)
+  try {
+    const refreshedResult = await db.query(
+      `SELECT id, naver_product_id, product_name, category_id,
+              representative_keyword, representative_keyword_rank,
+              COALESCE(excluded_from_test, false) = false as is_active
+       FROM products
+       WHERE COALESCE(excluded_from_test, false) = false
+       ORDER BY id`
+    );
+    products = refreshedResult.rows;
+    logger.info(`상품 목록 갱신 완료: ${products.length}개`);
+  } catch (error: any) {
+    logger.warn('상품 목록 갱신 실패, 기존 목록 사용', { error: error.message });
+  }
+
   // Phase 1: 순위 수집
   const phase1Result = await runPhase1RankingCollection(summary);
   phases.push(phase1Result);
@@ -171,6 +193,51 @@ export async function runDailyAutomation(): Promise<DailyAutomationResult> {
   });
 
   return result;
+}
+
+/**
+ * Phase 0: 상품 동기화
+ * Commerce API에서 상품 목록을 가져와 DB와 동기화
+ */
+async function runPhase0ProductSync(
+  summary: DailyAutomationResult['summary']
+): Promise<PhaseResult> {
+  const startTime = Date.now();
+  logger.info('[Phase 0] 상품 동기화 시작');
+
+  try {
+    const syncResult = await syncProducts({
+      hardDelete: false, // 삭제된 상품은 소프트 삭제 (excluded_from_test = true)
+      autoFindShoppingId: true, // 네이버 쇼핑 ID 자동 조회
+    });
+
+    // summary에 동기화 결과 반영
+    summary.productsProcessed += syncResult.added + syncResult.updated;
+
+    return {
+      phase: 0,
+      name: '상품 동기화',
+      success: syncResult.success,
+      duration: Date.now() - startTime,
+      details: {
+        added: syncResult.added,
+        updated: syncResult.updated,
+        removed: syncResult.removed,
+        shoppingIdUpdated: syncResult.shoppingIdUpdated,
+        errors: syncResult.errors,
+      },
+    };
+  } catch (error: any) {
+    logger.error('[Phase 0] 상품 동기화 실패', { error: error.message });
+    return {
+      phase: 0,
+      name: '상품 동기화',
+      success: false,
+      duration: Date.now() - startTime,
+      details: {},
+      error: error.message,
+    };
+  }
 }
 
 /**
@@ -294,6 +361,15 @@ async function runPhase2LifecycleUpdate(
     summary.testsPassed = passed;
     summary.testsFailed = failed;
 
+    // 대표 키워드 자동 갱신 (기여도 점수 기반)
+    const repKeywordUpdate = await batchUpdateRepresentativeKeywords();
+    if (repKeywordUpdate.updated > 0) {
+      logger.info('대표 키워드 자동 갱신 완료', {
+        total: repKeywordUpdate.total,
+        updated: repKeywordUpdate.updated,
+      });
+    }
+
     return {
       phase: 2,
       name: '키워드 라이프사이클 업데이트',
@@ -303,6 +379,7 @@ async function runPhase2LifecycleUpdate(
         totalTransitions,
         passed,
         failed,
+        representativeKeywordUpdates: repKeywordUpdate.updated,
       },
     };
   } catch (error: any) {
