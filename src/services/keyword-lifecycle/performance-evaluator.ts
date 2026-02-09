@@ -25,7 +25,7 @@ import {
 } from './state-manager';
 import { logger } from '@/utils/logger';
 
-const { TEST, TOP_PAGE, WARNING } = KEYWORD_CANDIDATE_CONFIG;
+const { TEST, TOP_PAGE } = KEYWORD_CANDIDATE_CONFIG;
 
 /**
  * 성과 평가 결과

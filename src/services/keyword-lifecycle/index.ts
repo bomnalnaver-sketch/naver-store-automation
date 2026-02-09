@@ -13,39 +13,20 @@ import {
   KeywordLifecycleMetrics,
   RankResult,
 } from '@/types/keyword.types';
+// 내부에서 사용하는 함수만 import
 import {
   transitionToTesting,
-  transitionToActive,
   transitionToFailed,
-  transitionToWarning,
-  transitionToRecovered,
-  transitionToRetired,
   calculateTestDays,
   isTestTimedOut,
   groupByStatus,
-  isValidTransition,
   TransitionResult,
-  StateTransition,
 } from './state-manager';
-import {
-  evaluatePerformance,
-  evaluateBatch,
-  isInTop40,
-  summarizeTestProgress,
-  EvaluationResult,
-} from './performance-evaluator';
-import {
-  calculateContribution,
-  analyzeContributions,
-  getTopContributors,
-  getBottomContributors,
-  applyContributionScores,
-  summarizeContributions,
-  ContributionAnalysis,
-} from './contribution-analyzer';
+import { evaluateBatch, summarizeTestProgress, EvaluationResult } from './performance-evaluator';
+import { analyzeContributions, summarizeContributions, ContributionAnalysis } from './contribution-analyzer';
 import { logger } from '@/utils/logger';
 
-// Re-export
+// Re-export (사용하지 않는 함수도 외부에서 사용할 수 있도록)
 export {
   transitionToTesting,
   transitionToActive,

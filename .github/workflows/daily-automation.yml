@@ -1,0 +1,60 @@
+name: Daily Automation
+
+on:
+  # 매일 KST 09:00 (UTC 00:00) 실행
+  schedule:
+    - cron: '0 0 * * *'
+
+  # 수동 실행 가능
+  workflow_dispatch:
+    inputs:
+      skip_phases:
+        description: '건너뛸 Phase (쉼표 구분, 예: 3,4)'
+        required: false
+        default: ''
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  daily-job:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run daily automation
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NAVER_COMMERCE_CLIENT_ID: ${{ secrets.NAVER_COMMERCE_CLIENT_ID }}
+          NAVER_COMMERCE_CLIENT_SECRET: ${{ secrets.NAVER_COMMERCE_CLIENT_SECRET }}
+          NAVER_SHOPPING_CLIENT_ID: ${{ secrets.NAVER_SHOPPING_CLIENT_ID }}
+          NAVER_SHOPPING_CLIENT_SECRET: ${{ secrets.NAVER_SHOPPING_CLIENT_SECRET }}
+          NAVER_SEARCH_AD_API_KEY: ${{ secrets.NAVER_SEARCH_AD_API_KEY }}
+          NAVER_SEARCH_AD_SECRET_KEY: ${{ secrets.NAVER_SEARCH_AD_SECRET_KEY }}
+          NAVER_SEARCH_AD_CUSTOMER_ID: ${{ secrets.NAVER_SEARCH_AD_CUSTOMER_ID }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: npm run daily-job
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data '{"text":"⚠️ *일일 자동화 실패*\n\n워크플로우: ${{ github.workflow }}\n실행: ${{ github.run_number }}\n링크: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+              $SLACK_WEBHOOK_URL
+          fi

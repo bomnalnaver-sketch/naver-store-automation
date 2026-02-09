@@ -7,7 +7,7 @@
  * - 트랜잭션 관리
  */
 
-import { Pool, PoolClient, QueryResult } from 'pg';
+import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { env } from '@/config/env';
 import { DB_CONFIG } from '@/config/app-config';
 
@@ -33,7 +33,7 @@ pool.on('error', (err) => {
 /**
  * 쿼리 실행
  */
-export async function query<T = any>(
+export async function query<T extends QueryResultRow = any>(
   text: string,
   params?: any[]
 ): Promise<QueryResult<T>> {
@@ -79,7 +79,7 @@ export async function transaction<T>(
 /**
  * 단일 행 조회
  */
-export async function queryOne<T = any>(
+export async function queryOne<T extends QueryResultRow = any>(
   text: string,
   params?: any[]
 ): Promise<T | null> {
@@ -90,7 +90,7 @@ export async function queryOne<T = any>(
 /**
  * 다중 행 조회
  */
-export async function queryMany<T = any>(
+export async function queryMany<T extends QueryResultRow = any>(
   text: string,
   params?: any[]
 ): Promise<T[]> {

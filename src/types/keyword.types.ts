@@ -335,6 +335,7 @@ export interface KeywordLifecycleMetrics {
   consecutiveDaysInTop40?: number;
   contributionScore?: number;
   testDays?: number;
+  candidateScore?: number;
 }
 
 // ============================================

@@ -23,12 +23,15 @@ import { discoverKeywords } from '@/services/keyword-discovery';
 import { selectKeywords } from '@/services/keyword-selector';
 import {
   runDailyLifecycleUpdate,
-  startTests,
   handleTestTimeouts,
-  generateLifecycleSummary,
 } from '@/services/keyword-lifecycle';
 import { KeywordCandidate, RankResult } from '@/types/keyword.types';
-import { KEYWORD_CANDIDATE_CONFIG } from '@/config/app-config';
+import {
+  runAutoExecution,
+  isAutoExecutionEnabled,
+  getExecutionMode,
+  AutoExecutionResult,
+} from '@/services/auto-executor';
 
 /** 일일 자동화에서 사용하는 상품 정보 (DB products 테이블 부분 타입) */
 interface Product {
@@ -129,7 +132,7 @@ export async function runDailyAutomation(): Promise<DailyAutomationResult> {
   phases.push(phase1Result);
 
   // Phase 2: 키워드 라이프사이클 업데이트
-  phases.push(await runPhase2LifecycleUpdate(products, phase1Result.details.rankResults, summary));
+  phases.push(await runPhase2LifecycleUpdate(products, summary));
 
   // Phase 3: 키워드 발굴
   phases.push(await runPhase3Discovery(products, summary));
@@ -180,13 +183,8 @@ async function runPhase1RankingCollection(
     summary.rankingsCollected = rankingResult.collectResult.totalKeywords;
     summary.alertsGenerated += rankingResult.alerts.length;
 
-    // 순위 결과를 Map으로 변환 (Phase 2에서 사용)
-    const rankResults = new Map<string, RankResult>();
-    if (rankingResult.collectResult.results) {
-      for (const result of rankingResult.collectResult.results) {
-        rankResults.set(result.keyword.toLowerCase(), result);
-      }
-    }
+    // 순위 결과는 Phase 2에서 DB에서 직접 조회
+    // collectResult는 요약 정보만 포함
 
     return {
       phase: 1,
@@ -200,7 +198,6 @@ async function runPhase1RankingCollection(
         executionTimeMs: rankingResult.collectResult.executionTimeMs,
         alertsGenerated: rankingResult.alerts.length,
         surgeDetected: rankingResult.surgeDetected,
-        rankResults, // Phase 2에서 사용
       },
     };
   } catch (error: any) {
@@ -221,7 +218,6 @@ async function runPhase1RankingCollection(
  */
 async function runPhase2LifecycleUpdate(
   products: Product[],
-  rankResults: Map<string, RankResult>,
   summary: DailyAutomationResult['summary']
 ): Promise<PhaseResult> {
   const startTime = Date.now();
@@ -232,6 +228,27 @@ async function runPhase2LifecycleUpdate(
   let failed = 0;
 
   try {
+    // 오늘 날짜 기준 순위 결과 조회
+    const today = new Date().toISOString().split('T')[0];
+    const rankResultsQuery = await db.query(
+      `SELECT keyword, rank, product_id
+       FROM keyword_ranking_daily
+       WHERE date = $1`,
+      [today]
+    );
+
+    // 순위 결과를 Map으로 변환
+    const rankResults = new Map<string, RankResult>();
+    for (const row of rankResultsQuery.rows) {
+      rankResults.set(row.keyword.toLowerCase(), {
+        keyword: row.keyword,
+        productId: row.product_id,
+        rank: row.rank,
+        apiCalls: 0,
+        checkedAt: new Date(),
+      });
+    }
+
     for (const product of products) {
       // 해당 상품의 후보 키워드 조회
       const candidatesResult = await db.query(
@@ -587,29 +604,93 @@ async function runPhase6Optimization(
 
 /**
  * Phase 7: 자동 실행 — 승인된 변경사항 적용
- * (현재는 수동 승인 방식으로, 자동 적용은 미래 구현)
+ * - A/B 테스트 승자 적용 (상품명 변경)
+ * - AI 결정 실행 (키워드 추가/삭제/입찰가 조정)
+ * - 예약된 입찰가 조정 적용
  */
 async function runPhase7Execution(
   _summary: DailyAutomationResult['summary']
 ): Promise<PhaseResult> {
   const startTime = Date.now();
-  logger.info('[Phase 7] 자동 실행 — 현재 수동 승인 모드');
+  logger.info('[Phase 7] 자동 실행 시작');
 
-  // TODO: 자동 실행 로직 구현
-  // - 승인된 상품명 변경 적용
-  // - 광고 키워드 입찰가 조정
-  // - A/B 테스트 결과 적용
+  try {
+    // 자동 실행 활성화 여부 확인
+    const isEnabled = await isAutoExecutionEnabled();
+    const mode = await getExecutionMode();
 
-  return {
-    phase: 7,
-    name: '자동 실행',
-    success: true,
-    duration: Date.now() - startTime,
-    details: {
-      mode: 'manual_approval',
-      message: '현재 수동 승인 모드 — 자동 실행 미적용',
-    },
-  };
+    if (!isEnabled) {
+      logger.info('[Phase 7] 자동 실행 비활성화 상태');
+      return {
+        phase: 7,
+        name: '자동 실행',
+        success: true,
+        duration: Date.now() - startTime,
+        details: {
+          mode: 'disabled',
+          message: '자동 실행 비활성화 상태',
+        },
+      };
+    }
+
+    if (mode === 'manual_approval') {
+      logger.info('[Phase 7] 수동 승인 모드 — 승인된 항목만 실행');
+    }
+
+    // 자동 실행 수행
+    const executionResult: AutoExecutionResult = await runAutoExecution();
+
+    const totalApplied =
+      executionResult.productNameChanges.applied +
+      executionResult.aiDecisions.executed +
+      executionResult.bidAdjustments.applied;
+
+    const totalFailed =
+      executionResult.productNameChanges.failed +
+      executionResult.aiDecisions.failed +
+      executionResult.bidAdjustments.failed;
+
+    logger.info('[Phase 7] 자동 실행 완료', {
+      productNameChanges: executionResult.productNameChanges.applied,
+      aiDecisions: executionResult.aiDecisions.executed,
+      bidAdjustments: executionResult.bidAdjustments.applied,
+      totalFailed,
+    });
+
+    return {
+      phase: 7,
+      name: '자동 실행',
+      success: totalFailed === 0,
+      duration: Date.now() - startTime,
+      details: {
+        mode,
+        productNameChanges: {
+          applied: executionResult.productNameChanges.applied,
+          failed: executionResult.productNameChanges.failed,
+        },
+        aiDecisions: {
+          executed: executionResult.aiDecisions.executed,
+          failed: executionResult.aiDecisions.failed,
+        },
+        bidAdjustments: {
+          applied: executionResult.bidAdjustments.applied,
+          failed: executionResult.bidAdjustments.failed,
+        },
+        totalApplied,
+        totalFailed,
+      },
+    };
+  } catch (error: any) {
+    logger.error('[Phase 7] 자동 실행 실패', { error: error.message });
+    return {
+      phase: 7,
+      name: '자동 실행',
+      success: false,
+      duration: Date.now() - startTime,
+      details: { mode: 'error' },
+      error: error.message,
+    };
+  }
 }
 
 /**

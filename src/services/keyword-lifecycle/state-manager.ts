@@ -10,7 +10,6 @@
 import {
   KeywordCandidate,
   CandidateStatus,
-  TestResult,
   KeywordLifecycleMetrics,
 } from '@/types/keyword.types';
 import { KEYWORD_CANDIDATE_CONFIG } from '@/config/app-config';
@@ -18,15 +17,17 @@ import { logger } from '@/utils/logger';
 
 /**
  * 상태 전이 규칙
- * candidate → testing → active → warning → retired
- *                    ↘ failed → retired
+ * pending_approval → candidate → testing → active → warning → retired
+ *                                       ↘ failed → retired
  */
 const VALID_TRANSITIONS: Record<CandidateStatus, CandidateStatus[]> = {
+  pending_approval: ['candidate', 'rejected'], // 승인 대기 → 후보 또는 거부
   candidate: ['testing', 'retired'], // 발굴 → 테스트 시작 또는 폐기
   testing: ['active', 'failed', 'retired'], // 테스트 중 → 성공/실패/폐기
   active: ['warning', 'retired'], // 활성 → 경고/퇴역
   warning: ['active', 'retired'], // 경고 → 회복/퇴역
   failed: ['retired', 'candidate'], // 실패 → 퇴역 또는 재시도
+  rejected: ['retired'], // 거부 → 퇴역
   retired: [], // 퇴역은 최종 상태
 };
 
@@ -348,11 +349,13 @@ export function groupByStatus(
   candidates: KeywordCandidate[]
 ): Record<CandidateStatus, KeywordCandidate[]> {
   const groups: Record<CandidateStatus, KeywordCandidate[]> = {
+    pending_approval: [],
     candidate: [],
     testing: [],
     active: [],
     warning: [],
     failed: [],
+    rejected: [],
     retired: [],
   };
 
