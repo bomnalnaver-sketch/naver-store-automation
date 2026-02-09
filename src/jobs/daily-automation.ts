@@ -32,6 +32,10 @@ import {
   getExecutionMode,
   AutoExecutionResult,
 } from '@/services/auto-executor';
+import {
+  collectDetailedReportData,
+  sendSlackDetailedReport,
+} from '@/services/slack-reporter';
 
 /** 일일 자동화에서 사용하는 상품 정보 (DB products 테이블 부분 타입) */
 interface Product {
@@ -678,6 +682,8 @@ async function runPhase7Execution(
         },
         totalApplied,
         totalFailed,
+        // Phase 8 상세 리포트에 전달
+        autoExecutionResult: executionResult,
       },
     };
   } catch (error: any) {
@@ -732,8 +738,33 @@ async function runPhase8Reporting(
       colorAnalysis: budgetStatus.colorAnalysis,
     });
 
-    // Slack 알림 (웹훅 URL이 설정되어 있을 때만)
-    const slackSent = await sendSlackReport(phases, summary, budgetStatus);
+    // Phase 7 결과에서 자동 실행 결과 추출
+    const phase7 = phases.find((p) => p.phase === 7);
+    const autoExecutionResult = phase7?.details?.autoExecutionResult;
+
+    // 실패한 Phase 목록
+    const failedPhases = phases
+      .filter((p) => !p.success)
+      .map((p) => ({ phase: p.phase, name: p.name, error: p.error || '알 수 없는 오류' }));
+
+    // 상세 리포트 데이터 수집
+    const reportData = await collectDetailedReportData(
+      summary,
+      {
+        total: {
+          used: budgetStatus.total.limit - budgetStatus.total.remaining,
+          remaining: budgetStatus.total.remaining,
+          limit: budgetStatus.total.limit,
+        },
+        ranking: { remaining: budgetStatus.ranking.remaining },
+        colorAnalysis: { remaining: budgetStatus.colorAnalysis.remaining },
+      },
+      failedPhases,
+      autoExecutionResult
+    );
+
+    // Slack 상세 리포트 발송
+    const slackSent = await sendSlackDetailedReport(reportData);
 
     return {
       phase: 8,
@@ -756,63 +787,6 @@ async function runPhase8Reporting(
       details: {},
       error: error.message,
     };
-  }
-}
-
-/**
- * Slack 일일 리포트 발송
- */
-async function sendSlackReport(
-  phases: PhaseResult[],
-  summary: DailyAutomationResult['summary'],
-  budgetStatus: any
-): Promise<boolean> {
-  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
-  if (!webhookUrl) {
-    logger.info('Slack 웹훅 URL 미설정, 알림 생략');
-    return false;
-  }
-
-  const failedPhases = phases.filter((p) => !p.success);
-  const statusEmoji = failedPhases.length === 0 ? '✅' : '⚠️';
-
-  const text = [
-    `${statusEmoji} *일일 자동화 리포트*`,
-    '',
-    `*처리 현황*`,
-    `• 상품 처리: ${summary.productsProcessed}개`,
-    `• 순위 수집: ${summary.rankingsCollected}개`,
-    `• 키워드 분류: ${summary.keywordsClassified}개`,
-    `• 최적화 리포트: ${summary.optimizationReports}개`,
-    `• 알림 생성: ${summary.alertsGenerated}개`,
-    '',
-    `*키워드 후보*`,
-    `• 발굴: ${summary.keywordsDiscovered}개`,
-    `• 선정/테스트 시작: ${summary.testsStarted}개`,
-    `• 테스트 성공: ${summary.testsPassed}개`,
-    `• 테스트 실패: ${summary.testsFailed}개`,
-    `• 수동 승인 대기: ${summary.pendingApproval}개`,
-    '',
-    `*API 예산 잔여*`,
-    `• 전체: ${budgetStatus.total.remaining.toLocaleString()} / ${budgetStatus.total.limit.toLocaleString()}`,
-    `• 순위추적: ${budgetStatus.ranking.remaining.toLocaleString()}`,
-    `• 색깔분류: ${budgetStatus.colorAnalysis.remaining.toLocaleString()}`,
-    '',
-    failedPhases.length > 0
-      ? `*⚠️ 실패 Phase*\n${failedPhases.map((p) => `• Phase ${p.phase}: ${p.name} — ${p.error}`).join('\n')}`
-      : '*모든 Phase 정상 완료*',
-  ].join('\n');
-
-  try {
-    await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    });
-    return true;
-  } catch (error: any) {
-    logger.error('Slack 알림 발송 실패', { error: error.message });
-    return false;
   }
 }
 
