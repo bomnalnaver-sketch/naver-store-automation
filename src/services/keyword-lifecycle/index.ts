@@ -25,6 +25,7 @@ import {
 import { evaluateBatch, summarizeTestProgress, EvaluationResult } from './performance-evaluator';
 import { analyzeContributions, summarizeContributions, ContributionAnalysis } from './contribution-analyzer';
 import { logger } from '@/utils/logger';
+import { db } from '@/db/client';
 
 // Re-export (사용하지 않는 함수도 외부에서 사용할 수 있도록)
 export {
@@ -258,4 +259,180 @@ export function generateLifecycleSummary(candidates: KeywordCandidate[]): {
     testProgress,
     contributionSummary,
   };
+}
+
+/**
+ * 대표 키워드 자동 갱신 결과
+ */
+export interface RepresentativeKeywordUpdateResult {
+  productId: number;
+  updated: boolean;
+  previousKeyword: string | null;
+  newKeyword: string | null;
+  reason: string;
+}
+
+/**
+ * 기여도 점수 기반 대표 키워드 자동 갱신
+ * - 활성 상태 키워드 중 기여도 점수가 가장 높은 키워드로 갱신
+ * - 현재 대표 키워드보다 20% 이상 높은 점수일 때만 변경
+ */
+export async function updateRepresentativeKeyword(
+  productId: number
+): Promise<RepresentativeKeywordUpdateResult> {
+  try {
+    // 1. 현재 상품 정보 조회
+    const productResult = await db.query(
+      `SELECT representative_keyword FROM products WHERE id = $1`,
+      [productId]
+    );
+
+    if (productResult.rows.length === 0) {
+      return {
+        productId,
+        updated: false,
+        previousKeyword: null,
+        newKeyword: null,
+        reason: '상품을 찾을 수 없음',
+      };
+    }
+
+    const currentKeyword = productResult.rows[0].representative_keyword;
+
+    // 2. 활성 상태 키워드 중 기여도 점수가 가장 높은 키워드 조회
+    const candidatesResult = await db.query(
+      `SELECT keyword, contribution_score, best_rank, days_in_top40
+       FROM keyword_candidates
+       WHERE product_id = $1
+         AND status IN ('active', 'testing')
+         AND contribution_score > 0
+       ORDER BY contribution_score DESC, best_rank ASC NULLS LAST
+       LIMIT 1`,
+      [productId]
+    );
+
+    if (candidatesResult.rows.length === 0) {
+      return {
+        productId,
+        updated: false,
+        previousKeyword: currentKeyword,
+        newKeyword: null,
+        reason: '활성 키워드 없음',
+      };
+    }
+
+    const bestCandidate = candidatesResult.rows[0];
+    const bestKeyword = bestCandidate.keyword;
+
+    // 3. 현재 대표 키워드와 동일하면 갱신 불필요
+    if (currentKeyword === bestKeyword) {
+      return {
+        productId,
+        updated: false,
+        previousKeyword: currentKeyword,
+        newKeyword: bestKeyword,
+        reason: '이미 최적 키워드',
+      };
+    }
+
+    // 4. 현재 대표 키워드의 기여도 점수 확인
+    const currentScoreResult = await db.query(
+      `SELECT contribution_score FROM keyword_candidates
+       WHERE product_id = $1 AND keyword = $2`,
+      [productId, currentKeyword]
+    );
+
+    const currentScore = currentScoreResult.rows[0]?.contribution_score || 0;
+    const bestScore = bestCandidate.contribution_score;
+
+    // 5. 20% 이상 높은 점수일 때만 변경 (안정성 확보)
+    const THRESHOLD_RATIO = 1.2;
+    if (currentScore > 0 && bestScore < currentScore * THRESHOLD_RATIO) {
+      return {
+        productId,
+        updated: false,
+        previousKeyword: currentKeyword,
+        newKeyword: bestKeyword,
+        reason: `점수 차이 부족 (현재: ${currentScore.toFixed(1)}, 후보: ${bestScore.toFixed(1)})`,
+      };
+    }
+
+    // 6. 대표 키워드 갱신
+    await db.query(
+      `UPDATE products
+       SET representative_keyword = $1,
+           representative_keyword_rank = $2,
+           updated_at = NOW()
+       WHERE id = $3`,
+      [bestKeyword, bestCandidate.best_rank, productId]
+    );
+
+    logger.info('대표 키워드 자동 갱신', {
+      productId,
+      previousKeyword: currentKeyword,
+      newKeyword: bestKeyword,
+      previousScore: currentScore,
+      newScore: bestScore,
+    });
+
+    return {
+      productId,
+      updated: true,
+      previousKeyword: currentKeyword,
+      newKeyword: bestKeyword,
+      reason: `기여도 점수 우수 (${bestScore.toFixed(1)}점, 순위 ${bestCandidate.best_rank || 'N/A'}위)`,
+    };
+  } catch (error: any) {
+    logger.error('대표 키워드 갱신 실패', { productId, error: error.message });
+    return {
+      productId,
+      updated: false,
+      previousKeyword: null,
+      newKeyword: null,
+      reason: `오류: ${error.message}`,
+    };
+  }
+}
+
+/**
+ * 모든 상품의 대표 키워드 일괄 갱신
+ */
+export async function batchUpdateRepresentativeKeywords(): Promise<{
+  total: number;
+  updated: number;
+  results: RepresentativeKeywordUpdateResult[];
+}> {
+  const results: RepresentativeKeywordUpdateResult[] = [];
+
+  try {
+    // 활성 상품 목록 조회
+    const productsResult = await db.query(
+      `SELECT id FROM products WHERE COALESCE(excluded_from_test, false) = false`
+    );
+
+    for (const product of productsResult.rows) {
+      const result = await updateRepresentativeKeyword(product.id);
+      results.push(result);
+    }
+
+    const updated = results.filter((r) => r.updated).length;
+
+    logger.info('대표 키워드 일괄 갱신 완료', {
+      total: results.length,
+      updated,
+    });
+
+    return {
+      total: results.length,
+      updated,
+      results,
+    };
+  } catch (error: any) {
+    logger.error('대표 키워드 일괄 갱신 실패', { error: error.message });
+    return {
+      total: 0,
+      updated: 0,
+      results,
+    };
+  }
 }

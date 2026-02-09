@@ -280,6 +280,37 @@ CREATE INDEX idx_daily_stats_date ON ad_keyword_daily_stats(date);
 
 ## 8. API 규칙
 
+### 8.0 API 구현 전 필수 확인 (중요!)
+
+**⚠️ API 호출 코드를 작성하거나 수정하기 전에 반드시 `docs/` 폴더의 관련 문서를 먼저 확인하라!**
+
+```
+docs/
+  naver-commerce-api.md    # 커머스 API 엔드포인트, 인증 방식
+  naver-search-ad-api.md   # 검색광고 API
+  naver-shopping-api.md    # 쇼핑 검색 API
+```
+
+**확인 사항:**
+- 올바른 엔드포인트 (GET/POST/PUT 메서드)
+- 인증 방식 (bcrypt 서명, Bearer 토큰 등)
+- 요청/응답 구조
+- Rate Limit 제한
+
+```typescript
+// ❌ 나쁜 예: 문서 확인 없이 임의로 구현
+const response = await axios.get('/api/products', {
+  headers: { 'X-Client-Id': clientId }
+});
+
+// ✅ 좋은 예: docs/naver-commerce-api.md 확인 후 구현
+// 문서에 따라 bcrypt 서명 방식 + POST 메서드 사용
+const signature = generateBcryptSignature(clientId, clientSecret, timestamp);
+const response = await axios.post('/v1/products/search', {}, {
+  headers: { 'Authorization': `Bearer ${signature}` }
+});
+```
+
 ### 8.1 Rate Limit (매우 중요!)
 
 **⚠️ 네이버 커머스 API: 초당 최대 2회 호출**

@@ -3,12 +3,13 @@
  * @description 네이버 API 공통 클라이언트
  * @responsibilities
  * - HTTP 요청 공통 처리
- * - 인증 헤더 생성
+ * - 인증 헤더 생성 (bcrypt 서명 방식)
  * - 에러 핸들링
  * - Rate Limiter + Retry 로직 통합
  */
 
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+import bcrypt from 'bcryptjs';
 import { env } from '@/config/env';
 import { retry } from '@/utils/retry';
 import { logger } from '@/utils/logger';
@@ -29,13 +30,34 @@ export class NaverApiError extends Error {
 }
 
 /**
- * 커머스 API 인증 헤더 생성
+ * bcrypt 서명 생성
+ * 서명: Base64(bcrypt.hashSync(clientId + "_" + timestamp, clientSecret))
+ */
+function generateBcryptSignature(
+  clientId: string,
+  clientSecret: string,
+  timestamp: number
+): string {
+  const message = `${clientId}_${timestamp}`;
+  // clientSecret을 bcrypt salt로 사용
+  const hash = bcrypt.hashSync(message, clientSecret);
+  return Buffer.from(hash).toString('base64');
+}
+
+/**
+ * 커머스 API 인증 헤더 생성 (bcrypt 서명 방식)
  */
 export function createCommerceAuthHeaders(): Record<string, string> {
+  const clientId = env.NAVER_COMMERCE_CLIENT_ID;
+  const clientSecret = env.NAVER_COMMERCE_CLIENT_SECRET;
+  const timestamp = Date.now();
+  const signature = generateBcryptSignature(clientId, clientSecret, timestamp);
+
   return {
-    'X-Naver-Client-Id': env.NAVER_COMMERCE_CLIENT_ID,
-    'X-Naver-Client-Secret': env.NAVER_COMMERCE_CLIENT_SECRET,
     'Content-Type': 'application/json',
+    'Authorization': `Bearer ${signature}`,
+    'x-ncp-apigw-timestamp': timestamp.toString(),
+    'x-ncp-iam-access-key': clientId,
   };
 }
 
