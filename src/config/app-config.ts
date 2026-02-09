@@ -321,6 +321,99 @@ export const POPULARITY_STAGE_CONFIG = {
 } as const;
 
 /**
+ * 키워드 후보 시스템 설정
+ */
+export const KEYWORD_CANDIDATE_CONFIG = {
+  /** 테스트 관련 */
+  TEST: {
+    /** 테스트 기간 (일) */
+    DURATION_DAYS: 14,
+    /** 테스트 성공 기준: 연속 1페이지 진입 일수 */
+    SUCCESS_CONSECUTIVE_DAYS: 3,
+    /** 동시 테스트 가능 키워드 수 */
+    MAX_CONCURRENT: 3,
+    /** 타임아웃 (테스트 기간 초과 시) */
+    TIMEOUT_DAYS: 14,
+  },
+
+  /** 1페이지 기준 */
+  TOP_PAGE: {
+    /** 1페이지 = 상위 40위 (광고 제외) */
+    RANK_LIMIT: 40,
+  },
+
+  /** 경쟁사 분석 */
+  COMPETITOR: {
+    /** 분석 캐시 유효 기간 (일) */
+    CACHE_DAYS: 7,
+    /** 키워드 최소 등장 횟수 (3개 이상 상품에서 등장해야 채택) */
+    MIN_FREQUENCY: 3,
+    /** 분석할 경쟁사 상품 수 */
+    TOP_PRODUCTS: 40,
+  },
+
+  /** 인기도 단계별 허용 경쟁강도 */
+  COMPETITION_FILTER: {
+    /** 극초반: LOW만 허용 */
+    EXTREME_EARLY: ['LOW'] as const,
+    /** 성장기: LOW, MEDIUM 허용 */
+    GROWTH: ['LOW', 'MEDIUM'] as const,
+    /** 안정기: 전체 허용 */
+    STABLE: ['LOW', 'MEDIUM', 'HIGH'] as const,
+  },
+
+  /** 검색량 제한 (인기도 단계별) */
+  SEARCH_VOLUME_LIMIT: {
+    /** 극초반: 검색량 1,000 이하 */
+    EXTREME_EARLY: 1000,
+    /** 성장기: 검색량 5,000 이하 */
+    GROWTH: 5000,
+    /** 안정기: 제한 없음 */
+    STABLE: Infinity,
+  },
+
+  /** 후보 점수 체계 (100점 만점) */
+  SCORING: {
+    /** 검색량 점수 (0~30) */
+    SEARCH_VOLUME: {
+      MAX_SCORE: 30,
+      /** 적정 검색량 범위 (이 범위일 때 최고 점수) */
+      OPTIMAL_RANGE: { MIN: 100, MAX: 3000 },
+    },
+    /** 경쟁강도 점수 (0~40) */
+    COMPETITION: {
+      MAX_SCORE: 40,
+      SCORES: {
+        LOW: 40,
+        MEDIUM: 25,
+        HIGH: 10,
+      },
+    },
+    /** 소스 점수 (0~20) */
+    SOURCE: {
+      MAX_SCORE: 20,
+      SCORES: {
+        competitor: 20, // 경쟁사 분석 (검증된 키워드)
+        search_ad: 15, // 검색광고 연관 키워드
+        product_name: 10, // 상품명 토큰화
+      },
+    },
+    /** 신규 보너스 점수 (0~10) */
+    NOVELTY: {
+      MAX_SCORE: 10,
+    },
+  },
+
+  /** 경고 및 퇴역 기준 */
+  WARNING: {
+    /** 1페이지 이탈 후 경고 전환 일수 */
+    DAYS_OUTSIDE_TOP40: 3,
+    /** 경고 상태에서 퇴역 전환 일수 */
+    DAYS_IN_WARNING: 7,
+  },
+} as const;
+
+/**
  * 전체 설정 객체
  */
 export const APP_CONFIG = {
@@ -337,4 +430,5 @@ export const APP_CONFIG = {
   SCORING: SCORING_CONFIG,
   RANKING: RANKING_CONFIG,
   POPULARITY_STAGE: POPULARITY_STAGE_CONFIG,
+  KEYWORD_CANDIDATE: KEYWORD_CANDIDATE_CONFIG,
 } as const;

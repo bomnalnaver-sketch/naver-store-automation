@@ -1,13 +1,16 @@
 /**
  * @file daily-automation.ts
- * @description 일일 자동화 메인 작업 (키워드 분석 + 순위 추적 + 상품명 최적화)
+ * @description 일일 자동화 메인 작업 (키워드 발굴/선정/라이프사이클 + 분석 + 최적화)
  * @responsibilities
- * - 5 Phase 파이프라인 실행
- * - Phase 1: 데이터 수집 (순위 추적 + 쇼핑 검색)
- * - Phase 2: 키워드 노출 분석 (색깔 분류 + 유형 분류)
- * - Phase 3: AI 전략 수립 (상품명 최적화 점수 + 개선 제안)
- * - Phase 4: 자동 실행 (승인된 변경사항 적용)
- * - Phase 5: 기록 및 알림 (DB 저장 + Slack)
+ * - 8 Phase 파이프라인 실행
+ * - Phase 1: 순위 수집
+ * - Phase 2: 키워드 라이프사이클 업데이트
+ * - Phase 3: 키워드 발굴
+ * - Phase 4: 키워드 선정
+ * - Phase 5: 키워드 노출 분석 (색깔 분류 + 유형 분류)
+ * - Phase 6: AI 전략 수립 (상품명 최적화 점수 + 개선 제안)
+ * - Phase 7: 자동 실행 (승인된 변경사항 적용)
+ * - Phase 8: 기록 및 알림 (DB 저장 + Slack)
  */
 
 import { db } from '@/db/client';

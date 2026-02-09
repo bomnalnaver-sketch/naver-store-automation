@@ -6,6 +6,7 @@
  * - 상품명 최적화 점수 타입
  * - 순위 추적 타입
  * - 인기도 단계 타입
+ * - 키워드 후보 및 라이프사이클 타입
  */
 
 import { ShoppingSearchItem } from './shopping-api.types';
@@ -246,4 +247,172 @@ export interface KeywordProductMapping {
   priority: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// ============================================
+// 키워드 후보 (Keyword Candidate)
+// ============================================
+
+/** 키워드 발굴 소스 */
+export type KeywordSource = 'product_name' | 'search_ad' | 'competitor';
+
+/** 키워드 후보 상태 */
+export type CandidateStatus =
+  | 'pending_approval' // 수동 승인 대기 (관련성 낮음)
+  | 'candidate' // 발굴됨, 테스트 대기
+  | 'testing' // 테스트 중
+  | 'active' // 테스트 통과, 활성
+  | 'warning' // 성과 하락 경고
+  | 'failed' // 테스트 실패
+  | 'rejected' // 사용자가 거부
+  | 'retired'; // 퇴역
+
+/** 승인 상태 */
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+
+/** 테스트 결과 */
+export type TestResult = 'pass' | 'fail' | 'timeout';
+
+/** 키워드 후보 */
+export interface KeywordCandidate {
+  id: number;
+  productId: number;
+  keywordId: number | null;
+  keyword: string;
+  source: KeywordSource;
+  discoveredAt: Date;
+  status: CandidateStatus;
+  competitionIndex: 'LOW' | 'MEDIUM' | 'HIGH' | null;
+  monthlySearchVolume: number;
+  testStartedAt: Date | null;
+  testEndedAt: Date | null;
+  testResult: TestResult | null;
+  bestRank: number | null;
+  currentRank: number | null;
+  daysInTop40: number;
+  consecutiveDaysInTop40: number;
+  contributionScore: number;
+  candidateScore: number;
+  // 승인 관련
+  approvalStatus: ApprovalStatus;
+  approvalReason: string | null; // 승인/거부 사유
+  approvalAt: Date | null;
+  filterReason: string | null; // 필터링된 이유 (관련성 낮음 등)
+  categoryMatchRatio: number | null; // 카테고리 일치율
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** 키워드 후보 생성 입력 */
+export interface KeywordCandidateCreateInput {
+  productId: number;
+  keyword: string;
+  source: KeywordSource;
+  competitionIndex?: 'LOW' | 'MEDIUM' | 'HIGH';
+  monthlySearchVolume?: number;
+  candidateScore?: number;
+}
+
+// ============================================
+// 키워드 라이프사이클
+// ============================================
+
+/** 상태 전이 로그 */
+export interface KeywordLifecycleLog {
+  id: number;
+  candidateId: number;
+  prevStatus: CandidateStatus | null;
+  newStatus: CandidateStatus;
+  reason: string | null;
+  metrics: KeywordLifecycleMetrics | null;
+  createdAt: Date;
+}
+
+/** 라이프사이클 메트릭 */
+export interface KeywordLifecycleMetrics {
+  rank?: number | null;
+  daysInTop40?: number;
+  consecutiveDaysInTop40?: number;
+  contributionScore?: number;
+  testDays?: number;
+}
+
+// ============================================
+// 키워드 발굴 (Discovery)
+// ============================================
+
+/** 발굴된 키워드 */
+export interface DiscoveredKeyword {
+  keyword: string;
+  source: KeywordSource;
+  competitionIndex?: 'LOW' | 'MEDIUM' | 'HIGH';
+  monthlySearchVolume?: number;
+  frequency?: number; // 경쟁사 분석시 등장 횟수
+  sourceDetails?: string[]; // 출처 상세 (상품명 등)
+}
+
+/** 발굴 결과 */
+export interface DiscoveryResult {
+  productId: number;
+  productName: string;
+  discoveredKeywords: DiscoveredKeyword[];
+  totalDiscovered: number;
+  sources: {
+    productName: number;
+    searchAd: number;
+    competitor: number;
+  };
+}
+
+// ============================================
+// 키워드 선정 (Selector)
+// ============================================
+
+/** 선정 점수 상세 */
+export interface CandidateScoreDetails {
+  searchVolumeScore: number; // 0~30
+  competitionScore: number; // 0~40
+  sourceScore: number; // 0~20
+  noveltyScore: number; // 0~10
+  totalScore: number; // 0~100
+}
+
+/** 선정 결과 */
+export interface SelectionResult {
+  productId: number;
+  popularityStage: PopularityStage;
+  selectedCandidates: Array<{
+    candidate: KeywordCandidate;
+    scoreDetails: CandidateScoreDetails;
+  }>;
+  rejectedCandidates: Array<{
+    candidate: KeywordCandidate;
+    reason: string;
+  }>;
+}
+
+// ============================================
+// 경쟁사 분석
+// ============================================
+
+/** 경쟁사 키워드 분석 결과 */
+export interface CompetitorKeywordAnalysis {
+  targetKeyword: string;
+  competitorCount: number;
+  discoveredKeywords: Array<{
+    keyword: string;
+    frequency: number;
+    sources: string[];
+  }>;
+  analysisDate: Date;
+}
+
+/** 경쟁사 분석 캐시 */
+export interface CompetitorAnalysisCache {
+  id: number;
+  targetKeyword: string;
+  discoveredKeywords: CompetitorKeywordAnalysis['discoveredKeywords'];
+  competitorCount: number;
+  analysisDate: Date;
+  createdAt: Date;
 }
