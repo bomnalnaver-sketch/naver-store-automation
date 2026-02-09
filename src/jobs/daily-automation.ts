@@ -36,6 +36,7 @@ import {
   collectDetailedReportData,
   sendSlackDetailedReport,
 } from '@/services/slack-reporter';
+import { batchUpdateShoppingIds } from '@/services/product-manager';
 
 /** 일일 자동화에서 사용하는 상품 정보 (DB products 테이블 부분 타입) */
 interface Product {
@@ -182,6 +183,12 @@ async function runPhase1RankingCollection(
   logger.info('[Phase 1] 순위 수집 시작');
 
   try {
+    // 네이버 쇼핑 ID 미설정 상품 자동 업데이트
+    const shoppingIdUpdate = await batchUpdateShoppingIds();
+    if (shoppingIdUpdate.updated > 0) {
+      logger.info('네이버 쇼핑 ID 자동 업데이트 완료', shoppingIdUpdate);
+    }
+
     const rankingResult = await runDailyRankingJob();
 
     summary.rankingsCollected = rankingResult.collectResult.totalKeywords;
