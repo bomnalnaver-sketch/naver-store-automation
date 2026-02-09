@@ -1,0 +1,26 @@
+/* ─── 후보 테이블 액션 버튼 스타일 ─── */
+
+.candidate-action-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.candidate-approve-btn {
+  border-color: oklch(0.65 0.18 145);
+  color: oklch(0.65 0.18 145);
+}
+
+.candidate-approve-btn:hover {
+  background: oklch(0.65 0.18 145 / 0.1);
+  border-color: oklch(0.65 0.18 145);
+}
+
+.candidate-reject-btn {
+  border-color: oklch(0.60 0.22 25);
+  color: oklch(0.60 0.22 25);
+}
+
+.candidate-reject-btn:hover {
+  background: oklch(0.60 0.22 25 / 0.1);
+  border-color: oklch(0.60 0.22 25);
+}

@@ -75,20 +75,17 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="dashboard-main-grid">
-        <div className="dashboard-chart-area">
-          <AreaChartCard
-            title="매출 / 광고비 트렌드 (30일)"
-            data={trendData}
-            config={trendChartConfig}
-            xAxisKey="dateLabel"
-            yAxisFormat="man"
-          />
-          <BudgetTracker budget={budget} />
-        </div>
-        <div className="dashboard-alert-area">
-          <AlertFeed alerts={alerts} />
-        </div>
+      <AreaChartCard
+        title="매출 / 광고비 트렌드 (30일)"
+        data={trendData}
+        config={trendChartConfig}
+        xAxisKey="dateLabel"
+        yAxisFormat="man"
+      />
+
+      <div className="dashboard-bottom-grid">
+        <BudgetTracker budget={budget} />
+        <AlertFeed alerts={alerts} />
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ import {
   Megaphone,
   Brain,
   Settings,
+  Lightbulb,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -37,6 +38,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: '분석',
     items: [
       { label: '키워드 분석', href: '/keywords', icon: Search },
+      { label: '후보 관리', href: '/candidates', icon: Lightbulb },
       { label: '순위 추적', href: '/rankings', icon: BarChart3 },
       { label: '광고 성과', href: '/ads', icon: Megaphone },
       { label: 'AI 분석', href: '/ai', icon: Brain },

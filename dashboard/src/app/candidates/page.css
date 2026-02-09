@@ -1,0 +1,75 @@
+/* ─── 후보 관리 페이지 스타일 ─── */
+
+.candidates-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.candidates-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.candidates-stat-card {
+  padding: 20px;
+}
+
+.candidates-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.candidates-stat-label {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  margin-top: 4px;
+}
+
+.candidates-stat-pending .candidates-stat-value {
+  color: var(--chart-1);
+}
+
+.candidates-stat-approved .candidates-stat-value {
+  color: oklch(0.65 0.18 145);
+}
+
+.candidates-stat-rejected .candidates-stat-value {
+  color: oklch(0.60 0.22 25);
+}
+
+.candidates-table-card {
+  padding: 0;
+}
+
+.candidates-table-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.candidates-table-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.candidates-table-content {
+  padding: 16px;
+}
+
+/* 반응형 */
+@media (max-width: 1024px) {
+  .candidates-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .candidates-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

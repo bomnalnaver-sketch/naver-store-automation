@@ -292,3 +292,61 @@ export interface KeywordAnalysisLogRow {
   execution_time_ms: number | null;
   created_at: string;
 }
+
+// ============================================
+// 키워드 후보
+// ============================================
+
+export type CandidateSource = 'product_name' | 'search_ad' | 'competitor';
+export type CandidateStatus = 'pending_approval' | 'candidate' | 'testing' | 'active' | 'warning' | 'failed' | 'rejected' | 'retired';
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+export type TestResult = 'pass' | 'fail' | 'timeout';
+
+export interface KeywordCandidateRow {
+  id: number;
+  product_id: number;
+  keyword_id: number | null;
+  keyword: string;
+
+  // 발굴 정보
+  source: CandidateSource;
+  discovered_at: string;
+
+  // 상태 관리
+  status: CandidateStatus;
+
+  // 승인 관련
+  approval_status: ApprovalStatus;
+  approval_reason: string | null;
+  approval_at: string | null;
+  filter_reason: string | null;
+  category_match_ratio: number | null;
+
+  // 경쟁강도/검색량
+  competition_index: CompetitionIndex | null;
+  monthly_search_volume: number;
+
+  // 테스트 관련
+  test_started_at: string | null;
+  test_ended_at: string | null;
+  test_result: TestResult | null;
+
+  // 성과 지표
+  best_rank: number | null;
+  current_rank: number | null;
+  days_in_top40: number;
+  consecutive_days_in_top40: number;
+  contribution_score: number;
+
+  // 후보 점수
+  candidate_score: number;
+
+  created_at: string;
+  updated_at: string;
+}
+
+// 조인된 후보 데이터 (상품 정보 포함)
+export interface KeywordCandidateWithProduct extends KeywordCandidateRow {
+  product_name?: string;
+  store_name?: string | null;
+}
