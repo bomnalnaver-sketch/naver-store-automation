@@ -1,0 +1,143 @@
+/* ─── 키워드 개선 페이지 스타일 ─── */
+
+.ki-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ki-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.ki-stat-card {
+  padding: 20px;
+}
+
+.ki-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ki-stat-label {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  margin-top: 4px;
+}
+
+/* 상품 리스트 */
+.ki-product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ki-product-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  transition: background-color 0.15s;
+  text-decoration: none;
+  color: inherit;
+}
+
+.ki-product-item:hover {
+  background-color: var(--accent);
+}
+
+.ki-product-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ki-product-name {
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ki-product-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.ki-product-badges {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ki-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ki-badge-keyword {
+  background-color: oklch(0.92 0.06 260);
+  color: oklch(0.45 0.15 260);
+}
+
+.ki-badge-candidate {
+  background-color: oklch(0.92 0.06 145);
+  color: oklch(0.40 0.15 145);
+}
+
+:root[class~="dark"] .ki-badge-keyword {
+  background-color: oklch(0.30 0.06 260);
+  color: oklch(0.75 0.12 260);
+}
+
+:root[class~="dark"] .ki-badge-candidate {
+  background-color: oklch(0.30 0.06 145);
+  color: oklch(0.75 0.12 145);
+}
+
+.ki-table-card {
+  padding: 0;
+}
+
+.ki-table-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ki-table-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ki-table-content {
+  padding: 16px;
+}
+
+/* 반응형 */
+@media (max-width: 1024px) {
+  .ki-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .ki-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

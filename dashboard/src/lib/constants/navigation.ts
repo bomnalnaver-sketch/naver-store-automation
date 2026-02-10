@@ -12,6 +12,7 @@ import {
   Brain,
   Settings,
   Lightbulb,
+  Wand2,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -32,6 +33,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: '대시보드', href: '/', icon: LayoutDashboard },
       { label: '상품 관리', href: '/products', icon: Package },
+      { label: '키워드 개선', href: '/keyword-improve', icon: Wand2 },
     ],
   },
   {

@@ -19,7 +19,13 @@ import { logger } from '@/utils/logger';
 import { shoppingApiBudget } from '@/shared/api-budget-tracker';
 import { runDailyRankingJob } from '@/services/ranking-tracker';
 import { runFullClassificationForProduct } from '@/services/keyword-classification';
-import { analyzeProductName } from '@/services/product-name-optimizer';
+import {
+  analyzeProductName,
+  reorderProductKeywords,
+  fetchMappedKeywords,
+  fetchRedundantDictionary,
+} from '@/services/product-name-optimizer';
+import { commerceApi } from '@/services/naver-api/commerce-api';
 import { discoverKeywords } from '@/services/keyword-discovery';
 import { selectKeywords } from '@/services/keyword-selector';
 import {
@@ -679,23 +685,59 @@ async function runPhase5KeywordClassification(
 }
 
 /**
- * Phase 6: AI 전략 수립 — 상품명 최적화 점수 + 개선 제안
+ * Phase 6: AI 전략 수립 — 상품명 최적화 점수 + 키워드 순서 자동 재배치
  */
 async function runPhase6Optimization(
   products: Product[],
   summary: DailyAutomationResult['summary']
 ): Promise<PhaseResult> {
   const startTime = Date.now();
-  logger.info('[Phase 6] AI 전략 수립 시작 — 상품명 최적화');
+  logger.info('[Phase 6] AI 전략 수립 시작 — 상품명 최적화 + 키워드 재배치');
 
   let reports = 0;
+  let reorders = 0;
   let errors = 0;
 
   try {
     for (const product of products) {
       try {
+        // 6-1. 상품명 분석 (기존)
         await analyzeProductName(product.id, product.product_name);
         reports++;
+
+        // 6-2. 키워드 순서 자동 재배치 (신규)
+        const keywordDb = await fetchMappedKeywords(product.id);
+        const redundantDict = await fetchRedundantDictionary();
+
+        const reorderResult = await reorderProductKeywords(
+          product.id,
+          product.product_name,
+          keywordDb,
+          redundantDict
+        );
+
+        if (reorderResult.changed) {
+          // 네이버 커머스 API로 상품명 변경 적용
+          await commerceApi.updateProduct(product.naver_product_id, {
+            name: reorderResult.reorderedName,
+          });
+
+          // 로컬 DB 업데이트
+          await db.query(
+            'UPDATE products SET product_name = $1, updated_at = NOW() WHERE id = $2',
+            [reorderResult.reorderedName, product.id]
+          );
+
+          reorders++;
+
+          logger.info(`[Phase 6] 상품명 키워드 재배치 적용`, {
+            productId: product.id,
+            before: product.product_name,
+            after: reorderResult.reorderedName,
+            scoreBefore: reorderResult.currentScore,
+            scoreAfter: reorderResult.newScore,
+          });
+        }
       } catch (error: any) {
         errors++;
         logger.error(`[Phase 6] 상품 ${product.id} 최적화 분석 실패`, {
@@ -708,19 +750,19 @@ async function runPhase6Optimization(
 
     return {
       phase: 6,
-      name: 'AI 전략 수립 (상품명 최적화)',
+      name: 'AI 전략 수립 (상품명 최적화 + 키워드 재배치)',
       success: errors === 0,
       duration: Date.now() - startTime,
-      details: { reports, errors },
+      details: { reports, reorders, errors },
     };
   } catch (error: any) {
     logger.error('[Phase 6] 상품명 최적화 전체 실패', { error: error.message });
     return {
       phase: 6,
-      name: 'AI 전략 수립 (상품명 최적화)',
+      name: 'AI 전략 수립 (상품명 최적화 + 키워드 재배치)',
       success: false,
       duration: Date.now() - startTime,
-      details: { reports, errors },
+      details: { reports, reorders, errors },
       error: error.message,
     };
   }

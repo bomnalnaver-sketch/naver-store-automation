@@ -147,7 +147,7 @@ export async function analyzeAndSuggestImprovement(
  * @param productId 상품 ID
  * @returns 키워드 마스터 배열
  */
-async function fetchMappedKeywords(productId: number): Promise<KeywordMaster[]> {
+export async function fetchMappedKeywords(productId: number): Promise<KeywordMaster[]> {
   const sql = `
     SELECT k.*
     FROM keywords k
@@ -165,7 +165,7 @@ async function fetchMappedKeywords(productId: number): Promise<KeywordMaster[]> 
  * 불필요 키워드 사전 조회
  * @returns 불필요 키워드 문자열 배열
  */
-async function fetchRedundantDictionary(): Promise<string[]> {
+export async function fetchRedundantDictionary(): Promise<string[]> {
   const sql = `
     SELECT keyword FROM redundant_keywords_dict
     WHERE is_active = true
@@ -237,3 +237,8 @@ export {
 export {
   analyzeStoreNameBonus,
 } from './store-name-analyzer';
+
+export {
+  reorderProductKeywords,
+} from './keyword-reorder';
+export type { ReorderResult } from './keyword-reorder';
