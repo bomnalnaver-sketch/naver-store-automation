@@ -14,6 +14,7 @@ import {
 import {
   discoverFromSearchAd,
   SearchAdDiscoveryInput,
+  getKeywordMetrics,
 } from './source-search-ad';
 import {
   discoverFromCompetitors,
@@ -38,7 +39,7 @@ export {
   quickFilterByBlacklist,
   checkCategoryRelevance,
 } from './relevance-filter';
-export type { RelevanceFilterResult } from './relevance-filter';
+export type { RelevanceFilterResult, NeedsApprovalKeyword } from './relevance-filter';
 
 /**
  * 통합 발굴 입력
@@ -48,6 +49,8 @@ export interface DiscoveryInput {
   productName: string;
   representativeKeyword: string;
   existingKeywords: string[];
+  /** 이전에 테스트 실패/퇴역한 키워드 목록 (재발굴 방지) */
+  failedKeywords?: string[];
   categoryId?: string;
   options?: {
     skipProductName?: boolean;
@@ -72,6 +75,28 @@ export interface DiscoveryResultWithFilter extends DiscoveryResult {
  * @param input 발굴 입력
  * @returns 통합 발굴 결과
  */
+/**
+ * 키워드 정규화: 공백 제거 + 소문자 변환
+ * 띄어쓰기만 다른 중복을 방지 (예: "볼 펜" = "볼펜")
+ */
+function normalizeKeyword(keyword: string): string {
+  return keyword.replace(/\s+/g, '').toLowerCase();
+}
+
+/**
+ * 상품명에서 시드 키워드 추출 (2글자 이상 단어)
+ */
+function extractSeedWords(productName: string): string[] {
+  return productName
+    .replace(/[\[\(【\{][^\]\)】\}]*[\]\)】\}]/g, '')
+    .replace(/[\/\-_|+·•※★☆♥♡~!@#$%^&*=,.<>?;:'"]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length >= 2)
+    .filter((w) => !/^\d+$/.test(w))
+    .filter((w) => !/^\d+\.?\d*(mm|cm|m|kg|g|ml|l)$/i.test(w));
+}
+
 export async function discoverKeywords(
   input: DiscoveryInput
 ): Promise<DiscoveryResultWithFilter> {
@@ -80,6 +105,7 @@ export async function discoverKeywords(
     productName,
     representativeKeyword,
     existingKeywords,
+    failedKeywords = [],
     categoryId,
     options = {},
   } = input;
@@ -89,6 +115,7 @@ export async function discoverKeywords(
     productName,
     representativeKeyword,
     existingCount: existingKeywords.length,
+    failedCount: failedKeywords.length,
   });
 
   const allDiscovered: DiscoveredKeyword[] = [];
@@ -98,8 +125,27 @@ export async function discoverKeywords(
     competitor: 0,
   };
 
-  // 중복 제거를 위한 Set
-  const seenKeywords = new Set(existingKeywords.map((k) => k.toLowerCase()));
+  // 정규화된 중복 제거 Set (공백 제거 + 소문자)
+  const seenNormalized = new Set(existingKeywords.map(normalizeKeyword));
+
+  // 실패/퇴역 키워드 Set (정규화)
+  const failedNormalized = new Set(failedKeywords.map(normalizeKeyword));
+
+  /**
+   * 키워드가 새로운 것인지 체크 (정규화 기반)
+   * - 이미 본 키워드 제외
+   * - 이전 실패 키워드 제외
+   */
+  function isNewKeyword(keyword: string): boolean {
+    const norm = normalizeKeyword(keyword);
+    if (seenNormalized.has(norm)) return false;
+    if (failedNormalized.has(norm)) return false;
+    return true;
+  }
+
+  function markAsSeen(keyword: string): void {
+    seenNormalized.add(normalizeKeyword(keyword));
+  }
 
   // 1. 상품명 토큰화 발굴
   if (!options.skipProductName) {
@@ -107,15 +153,14 @@ export async function discoverKeywords(
       const tokenizerInput: TokenizerDiscoveryInput = {
         productId,
         productName,
-        existingKeywords: Array.from(seenKeywords),
+        existingKeywords: Array.from(seenNormalized),
       };
 
       const tokenizerResult = await discoverFromProductName(tokenizerInput);
 
       for (const keyword of tokenizerResult.discoveredKeywords) {
-        const lower = keyword.keyword.toLowerCase();
-        if (!seenKeywords.has(lower)) {
-          seenKeywords.add(lower);
+        if (isNewKeyword(keyword.keyword)) {
+          markAsSeen(keyword.keyword);
           allDiscovered.push(keyword);
           sources.productName++;
         }
@@ -128,27 +173,28 @@ export async function discoverKeywords(
     }
   }
 
-  // 2. 검색광고 연관 키워드 발굴
+  // 2. 검색광고 연관 키워드 발굴 (상품명 각 단어를 시드로 사용)
   if (!options.skipSearchAd) {
     try {
-      // 시드 키워드: 대표 키워드 + 옵션으로 전달된 시드
+      // 시드 키워드: 대표 키워드 + 상품명 단어들 + 옵션 시드
+      const productNameWords = extractSeedWords(productName);
       const seedKeywords = [
         representativeKeyword,
+        ...productNameWords,
         ...(options.seedKeywords || []),
       ];
 
       const searchAdInput: SearchAdDiscoveryInput = {
         productId,
-        seedKeywords: [...new Set(seedKeywords)], // 중복 제거
-        existingKeywords: Array.from(seenKeywords),
+        seedKeywords: [...new Set(seedKeywords)],
+        existingKeywords: Array.from(seenNormalized),
       };
 
       const searchAdResult = await discoverFromSearchAd(searchAdInput);
 
       for (const keyword of searchAdResult.discoveredKeywords) {
-        const lower = keyword.keyword.toLowerCase();
-        if (!seenKeywords.has(lower)) {
-          seenKeywords.add(lower);
+        if (isNewKeyword(keyword.keyword)) {
+          markAsSeen(keyword.keyword);
           allDiscovered.push(keyword);
           sources.searchAd++;
         }
@@ -168,15 +214,14 @@ export async function discoverKeywords(
         productId,
         targetKeyword: representativeKeyword,
         myProductName: productName,
-        existingKeywords: Array.from(seenKeywords),
+        existingKeywords: Array.from(seenNormalized),
       };
 
       const competitorResult = await discoverFromCompetitors(competitorInput);
 
       for (const keyword of competitorResult.discoveredKeywords) {
-        const lower = keyword.keyword.toLowerCase();
-        if (!seenKeywords.has(lower)) {
-          seenKeywords.add(lower);
+        if (isNewKeyword(keyword.keyword)) {
+          markAsSeen(keyword.keyword);
           allDiscovered.push(keyword);
           sources.competitor++;
         }
@@ -189,7 +234,44 @@ export async function discoverKeywords(
     }
   }
 
-  // 4. 관련성 필터링 (블랙리스트 + 카테고리)
+  // 4. 검색량/경쟁지수 보강 (product_name, competitor 소스)
+  const keywordsNeedingMetrics = allDiscovered.filter(
+    (k) => k.monthlySearchVolume === undefined && k.source !== 'search_ad'
+  );
+
+  if (keywordsNeedingMetrics.length > 0) {
+    logger.info('검색량 보강 시작', {
+      productId,
+      count: keywordsNeedingMetrics.length,
+    });
+
+    for (const keyword of keywordsNeedingMetrics) {
+      try {
+        const metrics = await getKeywordMetrics(keyword.keyword);
+        if (metrics) {
+          keyword.monthlySearchVolume =
+            metrics.monthlyPcQcCnt + metrics.monthlyMobileQcCnt;
+          keyword.competitionIndex = metrics.compIdx;
+        } else {
+          // API에서 데이터를 못 찾으면 0으로 설정
+          keyword.monthlySearchVolume = 0;
+        }
+      } catch (error) {
+        logger.warn('검색량 보강 실패', {
+          keyword: keyword.keyword,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        keyword.monthlySearchVolume = 0;
+      }
+    }
+
+    logger.info('검색량 보강 완료', {
+      productId,
+      enriched: keywordsNeedingMetrics.length,
+    });
+  }
+
+  // 5. 관련성 필터링 (블랙리스트 + 카테고리)
   let filterResult: RelevanceFilterResult | undefined;
 
   if (!options.skipRelevanceFilter) {
@@ -222,6 +304,7 @@ export async function discoverKeywords(
     productId,
     totalDiscovered: result.totalDiscovered,
     sources: result.sources,
+    failedFiltered: failedKeywords.length,
     needsApproval: filterResult?.needsApproval.length || 0,
   });
 

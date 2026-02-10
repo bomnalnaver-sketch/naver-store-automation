@@ -61,6 +61,11 @@
   padding: 16px;
 }
 
+/* 뒤로가기 바 */
+.candidates-back-bar {
+  margin-top: -12px;
+}
+
 /* 반응형 */
 @media (max-width: 1024px) {
   .candidates-stats-grid {

@@ -409,6 +409,12 @@ async function runPhase3Discovery(
   let totalPendingApproval = 0;
 
   try {
+    // 금지어 사전 조회 (전 상품 공통, 한 번만)
+    const redundantResult = await db.query(
+      `SELECT keyword FROM redundant_keywords_dict`
+    );
+    const globalBlacklist = redundantResult.rows.map((r: any) => r.keyword);
+
     for (const product of products) {
       if (!product.representative_keyword) continue;
 
@@ -419,48 +425,72 @@ async function runPhase3Discovery(
       );
       const existingKeywords = existingResult.rows.map((r: any) => r.keyword);
 
-      // 키워드 발굴
+      // 실패/퇴역/거부 키워드 조회 (재발굴 방지)
+      const failedResult = await db.query(
+        `SELECT keyword FROM keyword_candidates WHERE product_id = $1 AND status IN ('failed', 'retired', 'rejected')`,
+        [product.id]
+      );
+      const failedKeywords = [
+        ...failedResult.rows.map((r: any) => r.keyword),
+        ...globalBlacklist,
+      ];
+
+      // 키워드 발굴 (실패/금지어 제외)
       const discoveryResult = await discoverKeywords({
         productId: product.id,
         productName: product.product_name,
         representativeKeyword: product.representative_keyword,
         existingKeywords,
+        failedKeywords,
         categoryId: product.category_id,
       });
 
       totalDiscovered += discoveryResult.totalDiscovered;
 
-      // 발굴된 키워드 DB 저장
+      // 발굴된 키워드 DB 저장 (기존 데이터도 검색량/경쟁지수/관련성 업데이트)
       for (const keyword of discoveryResult.discoveredKeywords) {
         await db.query(
           `INSERT INTO keyword_candidates
-           (product_id, keyword, source, competition_index, monthly_search_volume, candidate_score, approval_status)
-           VALUES ($1, $2, $3, $4, $5, $6, 'approved')
-           ON CONFLICT (product_id, keyword) DO NOTHING`,
+           (product_id, keyword, source, competition_index, monthly_search_volume, category_match_ratio, candidate_score, approval_status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'approved')
+           ON CONFLICT (product_id, keyword) DO UPDATE SET
+             competition_index = COALESCE(EXCLUDED.competition_index, keyword_candidates.competition_index),
+             monthly_search_volume = CASE WHEN EXCLUDED.monthly_search_volume > 0 THEN EXCLUDED.monthly_search_volume ELSE keyword_candidates.monthly_search_volume END,
+             category_match_ratio = COALESCE(EXCLUDED.category_match_ratio, keyword_candidates.category_match_ratio),
+             updated_at = NOW()`,
           [
             product.id,
             keyword.keyword,
             keyword.source,
             keyword.competitionIndex || null,
             keyword.monthlySearchVolume || 0,
+            keyword.categoryMatchRatio ?? null,
             0, // 점수는 Phase 4에서 계산
           ]
         );
       }
 
-      // 수동 승인 대기 키워드 저장
+      // 수동 승인 대기 키워드 저장 (검색량, 경쟁지수, 관련성 비율 포함)
       if (discoveryResult.filterResult?.needsApproval) {
         for (const keyword of discoveryResult.filterResult.needsApproval) {
           await db.query(
             `INSERT INTO keyword_candidates
-             (product_id, keyword, source, status, approval_status, filter_reason)
-             VALUES ($1, $2, $3, 'pending_approval', 'pending', $4)
-             ON CONFLICT (product_id, keyword) DO NOTHING`,
+             (product_id, keyword, source, status, approval_status, filter_reason,
+              competition_index, monthly_search_volume, category_match_ratio)
+             VALUES ($1, $2, $3, 'pending_approval', 'pending', $4, $5, $6, $7)
+             ON CONFLICT (product_id, keyword) DO UPDATE SET
+               competition_index = COALESCE(EXCLUDED.competition_index, keyword_candidates.competition_index),
+               monthly_search_volume = CASE WHEN EXCLUDED.monthly_search_volume > 0 THEN EXCLUDED.monthly_search_volume ELSE keyword_candidates.monthly_search_volume END,
+               category_match_ratio = COALESCE(EXCLUDED.category_match_ratio, keyword_candidates.category_match_ratio),
+               updated_at = NOW()`,
             [
               product.id,
               keyword.keyword,
               keyword.source,
               '카테고리 관련성 낮음',
+              keyword.competitionIndex || null,
+              keyword.monthlySearchVolume || 0,
+              keyword.categoryMatchRatio ?? null,
             ]
           );
           totalPendingApproval++;
@@ -528,7 +558,14 @@ async function runPhase4Selection(
       );
       const existingCandidates: KeywordCandidate[] = testingResult.rows.map(rowToCandidate);
 
-      // 키워드 선정
+      // 실패/퇴역 키워드 조회 (감점 처리용)
+      const failedResult = await db.query(
+        `SELECT keyword FROM keyword_candidates WHERE product_id = $1 AND status IN ('failed', 'retired')`,
+        [product.id]
+      );
+      const failedKeywords = failedResult.rows.map((r: any) => r.keyword);
+
+      // 키워드 선정 (실패 키워드 감점 포함)
       const selectionResult = await selectKeywords({
         productId: product.id,
         representativeKeywordRank: product.representative_keyword_rank,
@@ -539,6 +576,7 @@ async function runPhase4Selection(
           monthlySearchVolume: c.monthlySearchVolume,
         })),
         existingCandidates,
+        failedKeywords,
       });
 
       totalSelected += selectionResult.selectedCandidates.length;

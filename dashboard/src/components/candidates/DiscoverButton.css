@@ -1,0 +1,25 @@
+/* ─── 키워드 발굴 버튼 스타일 ─── */
+
+.discover-button-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.discover-result-badge {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.discover-result-success {
+  color: oklch(0.55 0.18 145);
+  background: oklch(0.55 0.18 145 / 0.1);
+}
+
+.discover-result-error {
+  color: oklch(0.55 0.22 25);
+  background: oklch(0.55 0.22 25 / 0.1);
+}

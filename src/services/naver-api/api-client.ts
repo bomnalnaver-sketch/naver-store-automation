@@ -10,6 +10,7 @@
 
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { env } from '@/config/env';
 import { retry } from '@/utils/retry';
 import { logger } from '@/utils/logger';
@@ -72,25 +73,60 @@ export function createShoppingSearchAuthHeaders(): Record<string, string> {
 }
 
 /**
- * 검색광고 API 인증 헤더 생성
+ * 검색광고 API HMAC-SHA256 서명 생성
+ * message = "{timestamp}.{method}.{uri}"
  */
-export function createSearchAdAuthHeaders(): Record<string, string> {
-  return {
-    'X-API-KEY': env.NAVER_SEARCH_AD_API_KEY,
-    'X-SECRET-KEY': env.NAVER_SEARCH_AD_SECRET_KEY,
-    'X-Customer-ID': env.NAVER_SEARCH_AD_CUSTOMER_ID.toString(),
-    'Content-Type': 'application/json',
+function generateSearchAdSignature(
+  timestamp: number,
+  method: string,
+  uri: string,
+  secretKey: string
+): string {
+  const message = `${timestamp}.${method}.${uri}`;
+  const hmac = crypto.createHmac('sha256', secretKey);
+  hmac.update(message);
+  return hmac.digest('base64');
+}
+
+/**
+ * 검색광고 API 동적 인증 헤더 생성 (요청별 HMAC-SHA256 서명)
+ * @returns 요청 메서드/URI에 따라 헤더를 생성하는 함수
+ */
+export function createSearchAdDynamicHeaders(): AuthHeadersFn {
+  return (method: string, uri: string) => {
+    const timestamp = Date.now();
+    const signature = generateSearchAdSignature(
+      timestamp,
+      method,
+      uri,
+      env.NAVER_SEARCH_AD_SECRET_KEY
+    );
+
+    return {
+      'X-API-KEY': env.NAVER_SEARCH_AD_API_KEY,
+      'X-Customer': env.NAVER_SEARCH_AD_CUSTOMER_ID.toString(),
+      'X-Timestamp': timestamp.toString(),
+      'X-Signature': signature,
+      'Content-Type': 'application/json',
+    };
   };
 }
 
 /**
+ * 동적 인증 헤더 함수 타입
+ * 요청별로 메서드/URI에 따라 헤더를 생성 (HMAC 서명 등)
+ */
+export type AuthHeadersFn = (method: string, uri: string) => Record<string, string>;
+
+/**
  * API 클라이언트 클래스
+ * authHeaders: 정적 헤더 객체 또는 요청별 동적 헤더 함수
  */
 export class ApiClient {
   private baseURL: string;
-  private authHeaders: Record<string, string>;
+  private authHeaders: Record<string, string> | AuthHeadersFn;
 
-  constructor(baseURL: string, authHeaders: Record<string, string>) {
+  constructor(baseURL: string, authHeaders: Record<string, string> | AuthHeadersFn) {
     this.baseURL = baseURL;
     this.authHeaders = authHeaders;
   }
@@ -99,11 +135,15 @@ export class ApiClient {
    * HTTP 요청 (Retry 로직 포함)
    */
   async request<T = any>(config: AxiosRequestConfig): Promise<T> {
+    const headers = typeof this.authHeaders === 'function'
+      ? this.authHeaders(config.method?.toUpperCase() || 'GET', config.url || '')
+      : this.authHeaders;
+
     const fullConfig: AxiosRequestConfig = {
       ...config,
       baseURL: this.baseURL,
       headers: {
-        ...this.authHeaders,
+        ...headers,
         ...config.headers,
       },
     };

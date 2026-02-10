@@ -17,6 +17,13 @@ import { DiscoveredKeyword } from '@/types/keyword.types';
 import { logger } from '@/utils/logger';
 
 /**
+ * 수동 승인 대상 키워드 (카테고리 매치율 포함)
+ */
+export interface NeedsApprovalKeyword extends DiscoveredKeyword {
+  categoryMatchRatio?: number;
+}
+
+/**
  * 관련성 필터링 결과
  */
 export interface RelevanceFilterResult {
@@ -26,7 +33,7 @@ export interface RelevanceFilterResult {
     reason: string;
     details?: string;
   }>;
-  needsApproval: DiscoveredKeyword[];
+  needsApproval: NeedsApprovalKeyword[];
 }
 
 /**
@@ -162,7 +169,7 @@ export async function filterByRelevance(
 
   const passed: DiscoveredKeyword[] = [];
   const rejected: RelevanceFilterResult['rejected'] = [];
-  const needsApproval: DiscoveredKeyword[] = [];
+  const needsApproval: NeedsApprovalKeyword[] = [];
 
   logger.debug('관련성 필터링 시작', {
     totalKeywords: keywords.length,
@@ -191,8 +198,11 @@ export async function filterByRelevance(
       );
 
       if (!relevanceResult.isRelevant) {
-        // 관련성 낮은 키워드는 수동 승인 대상
-        needsApproval.push(keyword);
+        // 관련성 낮은 키워드는 수동 승인 대상 (매치율 포함)
+        needsApproval.push({
+          ...keyword,
+          categoryMatchRatio: relevanceResult.matchRatio,
+        });
         logger.debug('카테고리 관련성 낮음 → 수동 승인 필요', {
           keyword: keyword.keyword,
           matchRatio: relevanceResult.matchRatio,
@@ -200,6 +210,9 @@ export async function filterByRelevance(
         });
         continue;
       }
+
+      // 통과한 키워드에도 카테고리 매치율 저장
+      keyword.categoryMatchRatio = relevanceResult.matchRatio;
     }
 
     // 모든 필터 통과

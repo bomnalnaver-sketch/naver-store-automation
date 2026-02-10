@@ -350,6 +350,7 @@ export interface DiscoveredKeyword {
   monthlySearchVolume?: number;
   frequency?: number; // 경쟁사 분석시 등장 횟수
   sourceDetails?: string[]; // 출처 상세 (상품명 등)
+  categoryMatchRatio?: number; // 카테고리 일치율 (관련성 필터 결과)
 }
 
 /** 발굴 결과 */

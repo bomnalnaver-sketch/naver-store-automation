@@ -1,6 +1,6 @@
 /**
  * @file CandidatesTableClient.tsx
- * @description 키워드 후보 테이블 클라이언트 컴포넌트 (승인/거부 액션 포함)
+ * @description 키워드 후보 테이블 클라이언트 컴포넌트 (승인/거부/금지어 액션 + 일괄 처리)
  */
 
 'use client';
@@ -11,9 +11,18 @@ import { DataTable } from '@/components/shared/DataTable/DataTable';
 import { DataTableColumnHeader } from '@/components/shared/DataTable/DataTableColumnHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Check, X, Loader2 } from 'lucide-react';
+import { Check, X, Ban, Trash2, Loader2 } from 'lucide-react';
 import type { KeywordCandidateWithProduct, CandidateSource, CompetitionIndex } from '@/lib/supabase/types';
-import { approveCandidate, rejectCandidate } from '@/lib/actions/candidate-actions';
+import {
+  approveCandidate,
+  rejectCandidate,
+  blacklistCandidate,
+  deleteCandidate,
+  approveCandidatesBulk,
+  rejectCandidatesBulk,
+  blacklistCandidatesBulk,
+  deleteCandidatesBulk,
+} from '@/lib/actions/candidate-actions';
 import { formatNumber } from '@/lib/utils/formatters';
 import './CandidatesTableClient.css';
 
@@ -44,7 +53,7 @@ interface ActionCellProps {
 
 function ActionCell({ candidate, onAction }: ActionCellProps) {
   const [isPending, startTransition] = useTransition();
-  const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
+  const [actionType, setActionType] = useState<'approve' | 'reject' | 'blacklist' | 'delete' | null>(null);
 
   const handleApprove = () => {
     setActionType('approve');
@@ -68,6 +77,28 @@ function ActionCell({ candidate, onAction }: ActionCellProps) {
     });
   };
 
+  const handleBlacklist = () => {
+    setActionType('blacklist');
+    startTransition(async () => {
+      const result = await blacklistCandidate(candidate.id);
+      if (!result.success) {
+        console.error(result.error);
+      }
+      onAction();
+    });
+  };
+
+  const handleDelete = () => {
+    setActionType('delete');
+    startTransition(async () => {
+      const result = await deleteCandidate(candidate.id);
+      if (!result.success) {
+        console.error(result.error);
+      }
+      onAction();
+    });
+  };
+
   return (
     <div className="candidate-action-buttons">
       <Button
@@ -76,6 +107,7 @@ function ActionCell({ candidate, onAction }: ActionCellProps) {
         className="candidate-approve-btn"
         onClick={handleApprove}
         disabled={isPending}
+        title="승인"
       >
         {isPending && actionType === 'approve' ? (
           <Loader2 className="w-4 h-4 animate-spin" />
@@ -89,12 +121,156 @@ function ActionCell({ candidate, onAction }: ActionCellProps) {
         className="candidate-reject-btn"
         onClick={handleReject}
         disabled={isPending}
+        title="거부"
       >
         {isPending && actionType === 'reject' ? (
           <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
           <X className="w-4 h-4" />
         )}
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="candidate-blacklist-btn"
+        onClick={handleBlacklist}
+        disabled={isPending}
+        title="금지어로 등록"
+      >
+        {isPending && actionType === 'blacklist' ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Ban className="w-4 h-4" />
+        )}
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="candidate-delete-btn"
+        onClick={handleDelete}
+        disabled={isPending}
+        title="삭제 (재발굴 가능)"
+      >
+        {isPending && actionType === 'delete' ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Trash2 className="w-4 h-4" />
+        )}
+      </Button>
+    </div>
+  );
+}
+
+interface BulkActionsProps {
+  selectedRows: KeywordCandidateWithProduct[];
+  clearSelection: () => void;
+  onAction: () => void;
+}
+
+function BulkActions({ selectedRows, clearSelection, onAction }: BulkActionsProps) {
+  const [isPending, startTransition] = useTransition();
+  const [actionType, setActionType] = useState<'approve' | 'reject' | 'blacklist' | 'delete' | null>(null);
+
+  const ids = selectedRows.map((r) => r.id);
+
+  const handleBulkApprove = () => {
+    setActionType('approve');
+    startTransition(async () => {
+      const result = await approveCandidatesBulk(ids);
+      if (!result.success) console.error(result.error);
+      clearSelection();
+      onAction();
+    });
+  };
+
+  const handleBulkReject = () => {
+    setActionType('reject');
+    startTransition(async () => {
+      const result = await rejectCandidatesBulk(ids, '일괄 거부');
+      if (!result.success) console.error(result.error);
+      clearSelection();
+      onAction();
+    });
+  };
+
+  const handleBulkBlacklist = () => {
+    setActionType('blacklist');
+    startTransition(async () => {
+      const result = await blacklistCandidatesBulk(ids);
+      if (!result.success) console.error(result.error);
+      clearSelection();
+      onAction();
+    });
+  };
+
+  const handleBulkDelete = () => {
+    setActionType('delete');
+    startTransition(async () => {
+      const result = await deleteCandidatesBulk(ids);
+      if (!result.success) console.error(result.error);
+      clearSelection();
+      onAction();
+    });
+  };
+
+  return (
+    <div className="candidate-bulk-actions">
+      <span className="candidate-bulk-count">{selectedRows.length}개 선택</span>
+      <Button
+        variant="outline"
+        size="sm"
+        className="candidate-approve-btn"
+        onClick={handleBulkApprove}
+        disabled={isPending}
+      >
+        {isPending && actionType === 'approve' ? (
+          <Loader2 className="w-4 h-4 animate-spin mr-1" />
+        ) : (
+          <Check className="w-4 h-4 mr-1" />
+        )}
+        일괄 승인
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="candidate-reject-btn"
+        onClick={handleBulkReject}
+        disabled={isPending}
+      >
+        {isPending && actionType === 'reject' ? (
+          <Loader2 className="w-4 h-4 animate-spin mr-1" />
+        ) : (
+          <X className="w-4 h-4 mr-1" />
+        )}
+        일괄 거부
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="candidate-blacklist-btn"
+        onClick={handleBulkBlacklist}
+        disabled={isPending}
+      >
+        {isPending && actionType === 'blacklist' ? (
+          <Loader2 className="w-4 h-4 animate-spin mr-1" />
+        ) : (
+          <Ban className="w-4 h-4 mr-1" />
+        )}
+        일괄 금지어
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="candidate-delete-btn"
+        onClick={handleBulkDelete}
+        disabled={isPending}
+      >
+        {isPending && actionType === 'delete' ? (
+          <Loader2 className="w-4 h-4 animate-spin mr-1" />
+        ) : (
+          <Trash2 className="w-4 h-4 mr-1" />
+        )}
+        일괄 삭제
       </Button>
     </div>
   );
@@ -108,7 +284,6 @@ export function CandidatesTableClient({ data }: CandidatesTableClientProps) {
   const [key, setKey] = useState(0);
 
   const handleAction = () => {
-    // 테이블 리프레시 트리거 (revalidatePath로 처리됨)
     setKey((k) => k + 1);
   };
 
@@ -199,6 +374,14 @@ export function CandidatesTableClient({ data }: CandidatesTableClientProps) {
       data={data}
       searchKey="keyword"
       searchPlaceholder="키워드 검색..."
+      enableRowSelection
+      renderBulkActions={(selectedRows, clearSelection) => (
+        <BulkActions
+          selectedRows={selectedRows as KeywordCandidateWithProduct[]}
+          clearSelection={clearSelection}
+          onAction={handleAction}
+        />
+      )}
     />
   );
 }

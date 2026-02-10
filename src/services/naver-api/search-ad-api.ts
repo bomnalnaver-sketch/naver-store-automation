@@ -8,7 +8,7 @@
  * - Rate Limiter 적용 (초당 10회)
  */
 
-import { ApiClient, createSearchAdAuthHeaders } from './api-client';
+import { ApiClient, createSearchAdDynamicHeaders } from './api-client';
 import { naverSearchAdRateLimiter } from '@/shared/rate-limiter';
 import type {
   SearchAdCampaign,
@@ -24,6 +24,33 @@ import type {
 } from '@/types/naver-api.types';
 
 /**
+ * compIdx 한국어 → 영어 매핑
+ * API 응답: "높음"/"중간"/"낮음" → 코드 내부: "HIGH"/"MEDIUM"/"LOW"
+ */
+const COMP_IDX_MAP: Record<string, 'LOW' | 'MEDIUM' | 'HIGH'> = {
+  '높음': 'HIGH',
+  '중간': 'MEDIUM',
+  '낮음': 'LOW',
+};
+
+function mapCompIdx(value: string): 'LOW' | 'MEDIUM' | 'HIGH' {
+  return COMP_IDX_MAP[value] || 'MEDIUM';
+}
+
+/**
+ * 검색량 값 안전 파싱
+ * API가 낮은 검색량에 "< 10" 같은 문자열을 반환할 수 있음
+ */
+function parseSearchCount(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const num = parseInt(value.replace(/[^0-9]/g, ''), 10);
+    return isNaN(num) ? 0 : num;
+  }
+  return 0;
+}
+
+/**
  * 네이버 검색광고 API 클라이언트
  */
 export class NaverSearchAdApi {
@@ -31,8 +58,8 @@ export class NaverSearchAdApi {
 
   constructor() {
     this.client = new ApiClient(
-      'https://api.naver.com',
-      createSearchAdAuthHeaders()
+      'https://api.searchad.naver.com',
+      createSearchAdDynamicHeaders()
     );
   }
 
@@ -103,15 +130,27 @@ export class NaverSearchAdApi {
   }
 
   /**
-   * 연관 키워드 조회
+   * 연관 키워드 조회 (GET /keywordstool)
+   * @param keyword 힌트 키워드
+   * @returns 연관 키워드 목록 (compIdx는 영어로 변환됨)
    */
   async getRelatedKeywords(keyword: string): Promise<SearchAdRelatedKeyword[]> {
     return naverSearchAdRateLimiter.execute(async () => {
       const response = await this.client.get<SearchAdRelatedKeywordResponse>(
-        '/ncc/relkeywords',
-        { keyword }
+        '/keywordstool',
+        { hintKeywords: keyword, showDetail: 1 }
       );
-      return response.keywordList || [];
+
+      // 응답 정규화: compIdx 한국어→영어, 검색량 "< 10" → 숫자
+      const keywordList = response.keywordList || [];
+      return keywordList.map((item) => ({
+        ...item,
+        monthlyPcQcCnt: parseSearchCount(item.monthlyPcQcCnt),
+        monthlyMobileQcCnt: parseSearchCount(item.monthlyMobileQcCnt),
+        monthlyAvePcClkCnt: parseSearchCount(item.monthlyAvePcClkCnt),
+        monthlyAveMobileClkCnt: parseSearchCount(item.monthlyAveMobileClkCnt),
+        compIdx: mapCompIdx(item.compIdx as unknown as string),
+      }));
     });
   }
 

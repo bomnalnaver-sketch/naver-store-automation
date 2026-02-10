@@ -1,0 +1,77 @@
+/* ─── 상품 리스트 스타일 ─── */
+
+.product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.product-list-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.product-list-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.product-list-item:hover {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+.product-list-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  shrink: 0;
+  flex-shrink: 0;
+}
+
+.product-list-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-list-name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 6px;
+}
+
+.product-list-counts {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.product-list-badge-pending {
+  background: oklch(0.55 0.18 270 / 0.12);
+  color: oklch(0.55 0.18 270);
+  font-size: 12px;
+}
+
+.product-list-badge-approved {
+  background: oklch(0.55 0.18 145 / 0.12);
+  color: oklch(0.55 0.18 145);
+  font-size: 12px;
+}
+
+.product-list-badge-rejected {
+  background: oklch(0.55 0.22 25 / 0.12);
+  color: oklch(0.55 0.22 25);
+  font-size: 12px;
+}

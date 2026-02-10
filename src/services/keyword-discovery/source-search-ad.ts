@@ -10,7 +10,7 @@
 import { searchAdApi } from '@/services/naver-api/search-ad-api';
 import { DiscoveredKeyword } from '@/types/keyword.types';
 import { SearchAdRelatedKeyword } from '@/types/naver-api.types';
-import { AD_KEYWORD_CONFIG } from '@/config/app-config';
+import { AD_KEYWORD_CONFIG, KEYWORD_CANDIDATE_CONFIG } from '@/config/app-config';
 import { logger } from '@/utils/logger';
 
 /**
@@ -113,8 +113,11 @@ export async function discoverFromSearchAd(
     }
   }
 
-  // 검색량 기준 정렬 후 상위 N개만 선택
+  const minSearchVolume = KEYWORD_CANDIDATE_CONFIG.MIN_MONTHLY_SEARCH_VOLUME;
+
+  // 최소 검색량 필터 + 검색량 기준 정렬 후 상위 N개 선택
   const discoveredKeywords = Array.from(keywordMap.values())
+    .filter((k) => (k.monthlySearchVolume || 0) >= minSearchVolume)
     .sort((a, b) => (b.monthlySearchVolume || 0) - (a.monthlySearchVolume || 0))
     .slice(0, maxResults);
 
@@ -122,7 +125,8 @@ export async function discoverFromSearchAd(
     productId,
     totalRelated: allRelatedKeywords.length,
     uniqueNew: keywordMap.size,
-    selected: discoveredKeywords.length,
+    afterMinVolumeFilter: discoveredKeywords.length,
+    minSearchVolume,
   });
 
   return {

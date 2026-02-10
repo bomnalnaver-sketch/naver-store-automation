@@ -24,3 +24,38 @@
   background: oklch(0.60 0.22 25 / 0.1);
   border-color: oklch(0.60 0.22 25);
 }
+
+.candidate-blacklist-btn {
+  border-color: oklch(0.55 0.15 300);
+  color: oklch(0.55 0.15 300);
+}
+
+.candidate-blacklist-btn:hover {
+  background: oklch(0.55 0.15 300 / 0.1);
+  border-color: oklch(0.55 0.15 300);
+}
+
+.candidate-delete-btn {
+  border-color: oklch(0.55 0.02 260);
+  color: oklch(0.55 0.02 260);
+}
+
+.candidate-delete-btn:hover {
+  background: oklch(0.55 0.02 260 / 0.1);
+  border-color: oklch(0.55 0.02 260);
+}
+
+/* ─── 일괄 액션 툴바 ─── */
+
+.candidate-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.candidate-bulk-count {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: oklch(0.55 0.02 260);
+  white-space: nowrap;
+}

@@ -95,11 +95,21 @@ export function calculateNoveltyScore(isNew: boolean): number {
 }
 
 /**
+ * 실패 키워드 감점 (-20점)
+ * 이전에 테스트해서 실패한 키워드는 재시도 페널티 적용
+ */
+export function calculateFailedPenalty(isFailed: boolean): number {
+  if (!isFailed) return 0;
+  return SCORING.NOVELTY.FAILED_PENALTY;
+}
+
+/**
  * 키워드 총점 계산
  */
 export function calculateTotalScore(
   keyword: DiscoveredKeyword,
-  isNew: boolean = true
+  isNew: boolean = true,
+  isFailed: boolean = false
 ): CandidateScoreDetails {
   const searchVolumeScore = calculateSearchVolumeScore(
     keyword.monthlySearchVolume
@@ -107,9 +117,13 @@ export function calculateTotalScore(
   const competitionScore = calculateCompetitionScore(keyword.competitionIndex);
   const sourceScore = calculateSourceScore(keyword.source);
   const noveltyScore = calculateNoveltyScore(isNew);
+  const failedPenalty = calculateFailedPenalty(isFailed);
 
-  const totalScore =
-    searchVolumeScore + competitionScore + sourceScore + noveltyScore;
+  // 실패 키워드는 감점 적용 (최소 0점)
+  const totalScore = Math.max(
+    0,
+    searchVolumeScore + competitionScore + sourceScore + noveltyScore + failedPenalty
+  );
 
   return {
     searchVolumeScore,
@@ -122,14 +136,19 @@ export function calculateTotalScore(
 
 /**
  * 발굴된 키워드 목록에 점수 부여
+ * @param failedKeywords 이전에 테스트 실패한 키워드 Set (정규화된)
  */
 export function scoreKeywords(
   keywords: DiscoveredKeyword[],
-  existingKeywords: Set<string> = new Set()
+  existingKeywords: Set<string> = new Set(),
+  failedKeywords: Set<string> = new Set()
 ): ScoredKeyword[] {
   return keywords.map((keyword) => {
-    const isNew = !existingKeywords.has(keyword.keyword.toLowerCase());
-    const scoreDetails = calculateTotalScore(keyword, isNew);
+    const lower = keyword.keyword.toLowerCase();
+    const normalized = keyword.keyword.replace(/\s+/g, '').toLowerCase();
+    const isNew = !existingKeywords.has(lower);
+    const isFailed = failedKeywords.has(lower) || failedKeywords.has(normalized);
+    const scoreDetails = calculateTotalScore(keyword, isNew, isFailed);
 
     return {
       ...keyword,

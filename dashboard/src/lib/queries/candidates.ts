@@ -248,30 +248,95 @@ const EMPTY_STATS: CandidateStats = {
   },
 };
 
+// ============================================
+// 상품별 후보 요약
+// ============================================
+
+export interface ProductCandidateSummary {
+  productId: number;
+  productName: string;
+  pendingCount: number;
+  approvedCount: number;
+  rejectedCount: number;
+}
+
 /**
- * 키워드 후보 통계 조회
+ * 상품별 후보 개수 요약 조회
  */
-export async function getCandidateStats(): Promise<CandidateStats> {
+export async function getProductCandidateSummaries(): Promise<ProductCandidateSummary[]> {
   const supabase = createServerSupabase();
+
+  // 후보가 있는 상품의 승인 상태별 개수 집계
+  const { data, error } = await supabase
+    .from('keyword_candidates')
+    .select(`
+      product_id,
+      approval_status,
+      products:product_id ( product_name )
+    `);
+
+  if (error) {
+    if (error.code === 'PGRST205' || error.code === '42P01' || error.message?.includes('does not exist')) {
+      return [];
+    }
+    console.error('Failed to fetch product candidate summaries:', error);
+    throw error;
+  }
+
+  if (!data || data.length === 0) return [];
+
+  // 상품별 집계
+  const summaryMap = new Map<number, ProductCandidateSummary>();
+
+  for (const row of data) {
+    const pid = row.product_id as number;
+    const product = row.products as unknown as { product_name: string } | null;
+
+    if (!summaryMap.has(pid)) {
+      summaryMap.set(pid, {
+        productId: pid,
+        productName: product?.product_name ?? `상품 #${pid}`,
+        pendingCount: 0,
+        approvedCount: 0,
+        rejectedCount: 0,
+      });
+    }
+
+    const summary = summaryMap.get(pid)!;
+    if (row.approval_status === 'pending') summary.pendingCount++;
+    else if (row.approval_status === 'approved') summary.approvedCount++;
+    else if (row.approval_status === 'rejected') summary.rejectedCount++;
+  }
+
+  // pending 개수 내림차순 정렬
+  return Array.from(summaryMap.values()).sort((a, b) => b.pendingCount - a.pendingCount);
+}
+
+/**
+ * 키워드 후보 통계 조회 (상품별 필터 지원)
+ */
+export async function getCandidateStats(productId?: number): Promise<CandidateStats> {
+  const supabase = createServerSupabase();
+
+  // 쿼리 빌더: 공통 select + 선택적 productId 필터
+  const countQuery = (approvalStatus: string, source?: string) => {
+    let q = supabase
+      .from('keyword_candidates')
+      .select('id', { count: 'exact', head: true })
+      .eq('approval_status', approvalStatus);
+    if (productId) q = q.eq('product_id', productId);
+    if (source) q = q.eq('source', source);
+    return q;
+  };
 
   // 승인 상태별 개수
   const [pendingResult, approvedResult, rejectedResult] = await Promise.all([
-    supabase
-      .from('keyword_candidates')
-      .select('id', { count: 'exact', head: true })
-      .eq('approval_status', 'pending'),
-    supabase
-      .from('keyword_candidates')
-      .select('id', { count: 'exact', head: true })
-      .eq('approval_status', 'approved'),
-    supabase
-      .from('keyword_candidates')
-      .select('id', { count: 'exact', head: true })
-      .eq('approval_status', 'rejected'),
+    countQuery('pending'),
+    countQuery('approved'),
+    countQuery('rejected'),
   ]);
 
   // 테이블이 없는 경우 빈 통계 반환
-  // PGRST205: Supabase schema cache에서 테이블을 찾을 수 없음
   if (pendingResult.error?.code === 'PGRST205' || pendingResult.error?.code === '42P01' || pendingResult.error?.message?.includes('does not exist')) {
     console.warn('keyword_candidates table not found. Run migration 003-keyword-candidates.sql');
     return EMPTY_STATS;
@@ -279,21 +344,9 @@ export async function getCandidateStats(): Promise<CandidateStats> {
 
   // 소스별 pending 개수
   const [productNameResult, searchAdResult, competitorResult] = await Promise.all([
-    supabase
-      .from('keyword_candidates')
-      .select('id', { count: 'exact', head: true })
-      .eq('approval_status', 'pending')
-      .eq('source', 'product_name'),
-    supabase
-      .from('keyword_candidates')
-      .select('id', { count: 'exact', head: true })
-      .eq('approval_status', 'pending')
-      .eq('source', 'search_ad'),
-    supabase
-      .from('keyword_candidates')
-      .select('id', { count: 'exact', head: true })
-      .eq('approval_status', 'pending')
-      .eq('source', 'competitor'),
+    countQuery('pending', 'product_name'),
+    countQuery('pending', 'search_ad'),
+    countQuery('pending', 'competitor'),
   ]);
 
   return {

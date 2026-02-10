@@ -3,15 +3,13 @@
  * @description 경쟁사 상품명 분석 기반 키워드 발굴
  * @responsibilities
  * - 상위 40개 경쟁사 상품 조회
- * - 경쟁사 상품명 토큰화
- * - 빈도 분석 (3개+ 상품에서 등장하는 키워드만 채택)
+ * - 경쟁사 상품명에서 개별 단어(서브키워드) 모두 수집
  * - 내 상품에 없는 키워드만 필터
  */
 
 import { shoppingSearchApi } from '@/services/naver-api/shopping-search-api';
 import {
   tokenize,
-  generateCombinations,
   stripHtmlTags,
 } from '@/services/keyword-classification/keyword-tokenizer';
 import { DiscoveredKeyword, CompetitorKeywordAnalysis } from '@/types/keyword.types';
@@ -81,34 +79,17 @@ function isValidToken(token: string): boolean {
   if (IGNORE_WORDS.has(token.toUpperCase())) return false;
   if (/^\d+$/.test(token)) return false;
   if (/^[^a-zA-Z가-힣0-9]+$/.test(token)) return false;
+  // 단위 표기만 있는 경우 제외
+  if (/^\d+\.?\d*(mm|cm|m|kg|g|ml|l|oz|ea|개|장|매|팩|세트)$/i.test(token)) return false;
   return true;
 }
 
 /**
- * 조합 유효성 검사
- */
-function isValidCombination(combination: string): boolean {
-  if (combination.length < 3) return false;
-  if (!/[가-힣a-zA-Z]/.test(combination)) return false;
-  return true;
-}
-
-/**
- * 경쟁사 상품명에서 토큰 및 조합 추출
+ * 경쟁사 상품명에서 개별 단어만 추출 (N-gram 조합 없음)
  */
 function extractKeywordsFromProductName(productName: string): string[] {
   const cleanName = stripHtmlTags(productName);
-  const tokens = tokenize(cleanName).filter(isValidToken);
-
-  // 개별 토큰 (3자 이상만)
-  const singleTokens = tokens.filter((t) => t.length >= 3);
-
-  // 2-gram, 3-gram 조합
-  const combinations = generateCombinations(tokens, 2, 3).filter(
-    isValidCombination
-  );
-
-  return [...singleTokens, ...combinations];
+  return tokenize(cleanName).filter(isValidToken);
 }
 
 /**
@@ -228,7 +209,7 @@ export async function discoverFromCompetitors(
     targetKeyword,
     competitorCount: competitors.length,
     totalKeywords: frequencyMap.size,
-    frequentKeywords: discoveredKeywords.length,
+    passedKeywords: discoveredKeywords.length,
   });
 
   return {

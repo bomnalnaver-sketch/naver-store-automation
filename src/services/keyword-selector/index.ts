@@ -65,6 +65,8 @@ export interface SelectionInput {
   representativeKeywordRank: number | null;
   discoveredKeywords: DiscoveredKeyword[];
   existingCandidates?: KeywordCandidate[];
+  /** 이전에 테스트 실패/퇴역한 키워드 목록 */
+  failedKeywords?: string[];
   maxSelect?: number;
 }
 
@@ -83,6 +85,7 @@ export async function selectKeywords(
     representativeKeywordRank,
     discoveredKeywords,
     existingCandidates = [],
+    failedKeywords = [],
     maxSelect = KEYWORD_CANDIDATE_CONFIG.TEST.MAX_CONCURRENT,
   } = input;
 
@@ -106,11 +109,14 @@ export async function selectKeywords(
     rejected: filterResult.rejected.length,
   });
 
-  // 3. 점수화
+  // 3. 점수화 (실패 키워드 감점 포함)
   const existingKeywordsSet = new Set(
     existingCandidates.map((c) => c.keyword.toLowerCase())
   );
-  const scoredKeywords = scoreKeywords(filterResult.passed, existingKeywordsSet);
+  const failedKeywordsSet = new Set(
+    failedKeywords.map((k) => k.toLowerCase())
+  );
+  const scoredKeywords = scoreKeywords(filterResult.passed, existingKeywordsSet, failedKeywordsSet);
 
   // 점수 분석 로깅
   logScoreAnalysis(scoredKeywords, '후보 키워드');

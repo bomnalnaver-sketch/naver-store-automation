@@ -346,8 +346,8 @@ export const KEYWORD_CANDIDATE_CONFIG = {
   COMPETITOR: {
     /** 분석 캐시 유효 기간 (일) */
     CACHE_DAYS: 7,
-    /** 키워드 최소 등장 횟수 (3개 이상 상품에서 등장해야 채택) */
-    MIN_FREQUENCY: 3,
+    /** 키워드 최소 등장 횟수 (1 = 모든 서브키워드 수집) */
+    MIN_FREQUENCY: 1,
     /** 분석할 경쟁사 상품 수 */
     TOP_PRODUCTS: 40,
   },
@@ -378,7 +378,7 @@ export const KEYWORD_CANDIDATE_CONFIG = {
     SEARCH_VOLUME: {
       MAX_SCORE: 30,
       /** 적정 검색량 범위 (이 범위일 때 최고 점수) */
-      OPTIMAL_RANGE: { MIN: 100, MAX: 3000 },
+      OPTIMAL_RANGE: { MIN: 1000, MAX: 5000 },
     },
     /** 경쟁강도 점수 (0~40) */
     COMPETITION: {
@@ -401,8 +401,13 @@ export const KEYWORD_CANDIDATE_CONFIG = {
     /** 신규 보너스 점수 (0~10) */
     NOVELTY: {
       MAX_SCORE: 10,
+      /** 실패한 키워드 재발굴 시 감점 */
+      FAILED_PENALTY: -20,
     },
   },
+
+  /** 최소 월간 검색량 (이 수치 미만이면 후보에서 제외) */
+  MIN_MONTHLY_SEARCH_VOLUME: 1000,
 
   /** 경고 및 퇴역 기준 */
   WARNING: {
