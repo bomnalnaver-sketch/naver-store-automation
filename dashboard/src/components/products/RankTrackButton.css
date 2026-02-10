@@ -1,0 +1,28 @@
+.rank-track-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.rank-track-btn {
+  height: 28px;
+  font-size: 12px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.rank-track-result {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--primary);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank-track-error {
+  font-size: 11px;
+  color: var(--destructive);
+}

@@ -130,6 +130,39 @@ export async function excludeProduct(productId: number): Promise<{ success: bool
 }
 
 /**
+ * 대표 키워드 수정
+ */
+export async function updateRepresentativeKeyword(
+  productId: number,
+  keyword: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const trimmed = keyword.trim();
+    if (!trimmed) {
+      return { success: false, error: '키워드를 입력해주세요' };
+    }
+
+    const supabase = createServerSupabase();
+
+    const { error } = await supabase
+      .from('products')
+      .update({ representative_keyword: trimmed })
+      .eq('id', productId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/products');
+
+    return { success: true };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+    return { success: false, error: errorMessage };
+  }
+}
+
+/**
  * 모든 상품의 쇼핑 ID 일괄 갱신 요청
  * 실제 갱신은 일일 자동화에서 처리됨
  */

@@ -1,0 +1,59 @@
+.rep-keyword-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.rep-keyword-display:hover {
+  border-color: var(--border);
+  background: var(--accent);
+}
+
+.rep-keyword-empty {
+  color: var(--destructive);
+  font-style: italic;
+}
+
+.rep-keyword-pencil {
+  width: 12px;
+  height: 12px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  color: var(--muted-foreground);
+}
+
+.rep-keyword-display:hover .rep-keyword-pencil {
+  opacity: 1;
+}
+
+.rep-keyword-edit {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.rep-keyword-input {
+  height: 28px;
+  width: 140px;
+  font-size: 13px;
+}
+
+.rep-keyword-btn {
+  width: 28px;
+  height: 28px;
+}
+
+.rep-keyword-error {
+  font-size: 11px;
+  color: var(--destructive);
+  width: 100%;
+}

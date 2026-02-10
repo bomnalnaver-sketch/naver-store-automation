@@ -70,3 +70,32 @@ export async function fetchProductRankings(naverProductId: string) {
 
   return data ?? [];
 }
+
+/** 키워드별 최신 순위 (가장 최근 기록만) */
+export async function fetchLatestKeywordRanks(naverProductId: string) {
+  const supabase = createServerSupabase();
+
+  const { data } = await supabase
+    .from('keyword_ranking_daily')
+    .select('keyword, rank, checked_at')
+    .eq('product_id', naverProductId)
+    .order('checked_at', { ascending: false });
+
+  if (!data || data.length === 0) return [];
+
+  // 키워드별 가장 최근 기록만 추출
+  const latestMap = new Map<string, { keyword: string; rank: number | null; checked_at: string }>();
+  for (const row of data) {
+    if (!latestMap.has(row.keyword)) {
+      latestMap.set(row.keyword, row);
+    }
+  }
+
+  return Array.from(latestMap.values()).sort((a, b) => {
+    // 순위가 있는 것 먼저, 그 중 순위가 높은(낮은 숫자) 것 먼저
+    if (a.rank == null && b.rank == null) return 0;
+    if (a.rank == null) return 1;
+    if (b.rank == null) return -1;
+    return a.rank - b.rank;
+  });
+}
