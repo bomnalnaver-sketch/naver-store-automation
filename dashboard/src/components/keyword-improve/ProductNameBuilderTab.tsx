@@ -13,14 +13,14 @@
 import { useState, useTransition, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Save, Upload, RotateCcw, X, Plus } from 'lucide-react';
+import { Save, Upload, RotateCcw, Plus } from 'lucide-react';
 import {
   saveProductName,
   applyProductNameToStore,
 } from '@/lib/actions/keyword-improve-actions';
 import type { MappedKeywordWithMetrics, CandidateKeywordForImprove } from '@/lib/queries/keyword-improve';
 import { formatNumber } from '@/lib/utils/formatters';
+import { DraggableTokenList } from './DraggableTokenList';
 
 interface ProductNameBuilderTabProps {
   productId: number;
@@ -152,29 +152,21 @@ export function ProductNameBuilderTab({
           rows={2}
         />
 
-        {/* 토큰 시각화 */}
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {tokens.map((token, idx) => {
-            const isMapped = mappedKeywords.some(
-              (kw) => kw.keyword.toLowerCase() === token.toLowerCase()
-            );
-            return (
-              <span
-                key={idx}
-                className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium cursor-pointer transition-colors ${
-                  isMapped
-                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                }`}
-                title="클릭하여 제거"
-                onClick={() => removeToken(idx)}
-              >
-                {token}
-                <X className="w-3 h-3 opacity-60" />
-              </span>
-            );
-          })}
-        </div>
+        {/* 토큰 시각화 (드래그로 순서 변경 가능) */}
+        {tokens.length > 0 && (
+          <div className="mt-3">
+            <p className="text-xs text-muted-foreground mb-2">드래그하여 순서 변경</p>
+            <DraggableTokenList
+              tokens={tokens}
+              mappedKeywords={mappedKeywords.map((kw) => kw.keyword)}
+              onReorder={(newTokens) => {
+                setEditedName(newTokens.join(' '));
+                setMessage(null);
+              }}
+              onRemove={removeToken}
+            />
+          </div>
+        )}
       </div>
 
       {/* 키워드 풀 */}

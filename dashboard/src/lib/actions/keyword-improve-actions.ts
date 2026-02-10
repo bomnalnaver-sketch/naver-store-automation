@@ -11,6 +11,11 @@
 
 import { createServerSupabase } from '@/lib/supabase/client';
 import { revalidatePath } from 'next/cache';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
+
+const execAsync = promisify(exec);
 
 // ============================================
 // 타입 정의
@@ -238,6 +243,184 @@ export async function removeKeywordFromProductName(
       success: false,
       message: '오류가 발생했습니다.',
       error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+// ============================================
+// 검색량/경쟁강도 보강
+// ============================================
+
+export interface MetricsEnrichResult {
+  success: boolean;
+  message: string;
+  productsProcessed?: number;
+  totalEnriched?: number;
+  totalFailed?: number;
+  error?: string;
+}
+
+/**
+ * 키워드 검색량/경쟁강도 보강 (전체 상품)
+ * 백엔드의 enrich-metrics 스크립트를 트리거
+ */
+export async function triggerMetricsEnrichment(): Promise<MetricsEnrichResult> {
+  try {
+    const rootDir = path.resolve(process.cwd(), '..');
+
+    console.log('검색량 보강 스크립트 실행 중...');
+
+    const { stdout, stderr } = await execAsync('npm run enrich-metrics', {
+      cwd: rootDir,
+      timeout: 300000, // 5분 타임아웃
+    });
+
+    if (stderr) {
+      console.log('스크립트 stderr:', stderr);
+    }
+
+    // JSON 결과 파싱
+    try {
+      const lines = stdout.trim().split('\n');
+      let jsonStr = '';
+      let braceCount = 0;
+      let inJson = false;
+
+      for (const line of lines) {
+        if (line.trim().startsWith('{')) {
+          inJson = true;
+          jsonStr = '';
+        }
+        if (inJson) {
+          jsonStr += line + '\n';
+          braceCount += (line.match(/{/g) || []).length;
+          braceCount -= (line.match(/}/g) || []).length;
+          if (braceCount === 0 && jsonStr.trim()) {
+            break;
+          }
+        }
+      }
+
+      if (jsonStr) {
+        const parsed = JSON.parse(jsonStr);
+        revalidatePath('/keyword-improve');
+        revalidatePath('/candidates');
+
+        return {
+          success: parsed.success ?? true,
+          productsProcessed: parsed.productsProcessed ?? 0,
+          totalEnriched: parsed.totalEnriched ?? 0,
+          totalFailed: parsed.totalFailed ?? 0,
+          message: `검색량 보강 완료: ${parsed.totalEnriched ?? 0}개 업데이트`,
+        };
+      }
+    } catch {
+      // JSON 파싱 실패해도 스크립트 성공
+    }
+
+    revalidatePath('/keyword-improve');
+    revalidatePath('/candidates');
+
+    return {
+      success: true,
+      message: '검색량 보강이 완료되었습니다.',
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+    console.error('검색량 보강 스크립트 실패:', errorMessage);
+    return {
+      success: false,
+      message: `검색량 보강 실패: ${errorMessage}`,
+      error: errorMessage,
+    };
+  }
+}
+
+// ============================================
+// 키워드 매핑 생성 + 분류
+// ============================================
+
+export interface ClassifyResult {
+  success: boolean;
+  message: string;
+  productsProcessed?: number;
+  keywordsMapped?: number;
+  keywordsClassified?: number;
+  errors?: number;
+  error?: string;
+}
+
+/**
+ * 키워드 매핑 생성 + 유형/색깔 분류 실행
+ * 백엔드의 classify-keywords 스크립트를 트리거
+ */
+export async function triggerKeywordClassification(): Promise<ClassifyResult> {
+  try {
+    const rootDir = path.resolve(process.cwd(), '..');
+
+    console.log('키워드 분류 스크립트 실행 중...');
+
+    const { stdout, stderr } = await execAsync('npm run classify-keywords', {
+      cwd: rootDir,
+      timeout: 600000, // 10분 타임아웃 (분류는 API 호출이 많음)
+    });
+
+    if (stderr) {
+      console.log('스크립트 stderr:', stderr);
+    }
+
+    // JSON 결과 파싱
+    try {
+      const lines = stdout.trim().split('\n');
+      let jsonStr = '';
+      let braceCount = 0;
+      let inJson = false;
+
+      for (const line of lines) {
+        if (line.trim().startsWith('{')) {
+          inJson = true;
+          jsonStr = '';
+        }
+        if (inJson) {
+          jsonStr += line + '\n';
+          braceCount += (line.match(/{/g) || []).length;
+          braceCount -= (line.match(/}/g) || []).length;
+          if (braceCount === 0 && jsonStr.trim()) {
+            break;
+          }
+        }
+      }
+
+      if (jsonStr) {
+        const parsed = JSON.parse(jsonStr);
+        revalidatePath('/keyword-improve');
+
+        return {
+          success: parsed.success ?? true,
+          productsProcessed: parsed.productsProcessed ?? 0,
+          keywordsMapped: parsed.keywordsMapped ?? 0,
+          keywordsClassified: parsed.keywordsClassified ?? 0,
+          errors: parsed.errors ?? 0,
+          message: `키워드 분류 완료: ${parsed.keywordsMapped ?? 0}개 매핑, ${parsed.keywordsClassified ?? 0}개 분류`,
+        };
+      }
+    } catch {
+      // JSON 파싱 실패해도 스크립트 성공
+    }
+
+    revalidatePath('/keyword-improve');
+
+    return {
+      success: true,
+      message: '키워드 분류가 완료되었습니다.',
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+    console.error('키워드 분류 스크립트 실패:', errorMessage);
+    return {
+      success: false,
+      message: `키워드 분류 실패: ${errorMessage}`,
+      error: errorMessage,
     };
   }
 }

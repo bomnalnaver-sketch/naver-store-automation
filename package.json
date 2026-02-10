@@ -18,7 +18,10 @@
     "electron:build": "electron-builder",
     "db:migrate": "tsx src/db/migrations/run.ts",
     "db:seed": "tsx src/db/seeds/run.ts",
-    "sync-products": "tsx fetch-products.ts"
+    "sync-products": "tsx fetch-products.ts",
+    "discover-keywords": "tsx src/jobs/discover-keywords.ts",
+    "enrich-metrics": "tsx src/scripts/enrich-metrics.ts",
+    "classify-keywords": "tsx src/scripts/classify-keywords.ts"
   },
   "keywords": [
     "naver",

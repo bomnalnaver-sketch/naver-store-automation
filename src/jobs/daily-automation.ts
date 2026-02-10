@@ -26,7 +26,7 @@ import {
   fetchRedundantDictionary,
 } from '@/services/product-name-optimizer';
 import { commerceApi } from '@/services/naver-api/commerce-api';
-import { discoverKeywords } from '@/services/keyword-discovery';
+import { discoverKeywords, enrichAllKeywordMetrics } from '@/services/keyword-discovery';
 import { selectKeywords } from '@/services/keyword-selector';
 import {
   runDailyLifecycleUpdate,
@@ -660,6 +660,28 @@ async function runPhase5KeywordClassification(
 
     summary.keywordsClassified = classified;
 
+    // 키워드 검색량/경쟁강도 보강 (검색광고 API)
+    let metricsEnriched = 0;
+    let metricsFailed = 0;
+
+    for (const product of products) {
+      try {
+        const enrichResult = await enrichAllKeywordMetrics(product.id);
+        metricsEnriched += enrichResult.mapped.enriched + enrichResult.candidates.enriched;
+        metricsFailed += enrichResult.mapped.failed + enrichResult.candidates.failed;
+      } catch (error: any) {
+        metricsFailed++;
+        logger.warn(`[Phase 5] 상품 ${product.id} 검색량 보강 실패`, {
+          error: error.message,
+        });
+      }
+    }
+
+    logger.info('[Phase 5] 검색량/경쟁강도 보강 완료', {
+      metricsEnriched,
+      metricsFailed,
+    });
+
     return {
       phase: 5,
       name: '키워드 노출 분석',
@@ -668,6 +690,8 @@ async function runPhase5KeywordClassification(
       details: {
         productsProcessed: summary.productsProcessed,
         keywordsClassified: classified,
+        metricsEnriched,
+        metricsFailed,
         errors,
       },
     };

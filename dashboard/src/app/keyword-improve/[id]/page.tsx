@@ -19,6 +19,8 @@ import {
 } from '@/lib/queries/keyword-improve';
 import { formatNumber, formatRank } from '@/lib/utils/formatters';
 import { KeywordImproveTabs } from '@/components/keyword-improve/KeywordImproveTabs';
+import { MetricsEnrichButton } from '@/components/keyword-improve/MetricsEnrichButton';
+import { ClassifyButton } from '@/components/keyword-improve/ClassifyButton';
 import './page.css';
 
 interface PageProps {
@@ -70,6 +72,12 @@ export default async function KeywordImproveDetailPage({ params }: PageProps) {
         </div>
         <p className="ki-current-name-text">{product.product_name}</p>
       </Card>
+
+      {/* 액션 바 */}
+      <div className="ki-enrich-bar">
+        <ClassifyButton />
+        <MetricsEnrichButton />
+      </div>
 
       {/* 요약 통계 */}
       <div className="ki-detail-stats">

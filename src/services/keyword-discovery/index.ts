@@ -40,6 +40,12 @@ export {
   checkCategoryRelevance,
 } from './relevance-filter';
 export type { RelevanceFilterResult, NeedsApprovalKeyword } from './relevance-filter';
+export {
+  enrichMappedKeywordMetrics,
+  enrichCandidateMetrics,
+  enrichAllKeywordMetrics,
+  enrichAllProductKeywordMetrics,
+} from './metrics-enricher';
 
 /**
  * 통합 발굴 입력
