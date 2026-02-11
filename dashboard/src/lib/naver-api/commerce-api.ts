@@ -5,12 +5,7 @@
  * - POST /v1/products/search 엔드포인트 사용
  */
 
-import * as dotenv from 'dotenv';
-import * as path from 'path';
 import bcrypt from 'bcryptjs';
-
-// 루트 프로젝트의 .env 파일 로드
-dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
 
 /** Commerce API 상품 (응답 구조에 맞게 수정) */
 export interface CommerceProduct {
