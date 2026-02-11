@@ -11,7 +11,7 @@
 import 'dotenv/config';
 import { db } from '@/db/client';
 import { logger } from '@/utils/logger';
-import { tokenize, generateCombinations } from '@/services/keyword-classification';
+import { tokenize } from '@/services/keyword-classification';
 import { runFullClassificationForProduct } from '@/services/keyword-classification';
 
 // ============================================
@@ -38,10 +38,11 @@ interface ClassifyResult {
 
 /**
  * 상품명에서 키워드를 추출하고 매핑 생성
- * 1. 상품명 토큰 → 2-gram, 3-gram 조합 생성
+ * 1. 상품명 개별 토큰 추출 (N-gram 합성 없음)
  * 2. keyword_candidates에서 승인된 키워드 가져오기
  * 3. keywords 마스터에 UPSERT
  * 4. keyword_product_mapping에 UPSERT
+ * 5. 기존 합성 키워드 매핑 및 고아 키워드 삭제
  */
 async function buildKeywordMappings(product: Product): Promise<number> {
   const productName = product.product_name;
@@ -55,15 +56,6 @@ async function buildKeywordMappings(product: Product): Promise<number> {
   for (const token of tokens) {
     if (token.length >= 2 && !/^\d+$/.test(token)) {
       keywordSet.add(token);
-    }
-  }
-
-  // 2-gram, 3-gram 조합 (붙여쓰기 형태만)
-  const combinations = generateCombinations(tokens, 2, Math.min(3, tokens.length));
-  for (const combo of combinations) {
-    // 띄어쓰기 없는 붙여쓰기만
-    if (!combo.includes(' ') && combo.length >= 2 && combo.length <= 30) {
-      keywordSet.add(combo);
     }
   }
 
@@ -82,7 +74,43 @@ async function buildKeywordMappings(product: Product): Promise<number> {
     keywordSet.add(row.keyword);
   }
 
-  // 3. keywords 마스터 UPSERT + mapping 생성
+  // 3. 기존 매핑 중 현재 keywordSet에 없는 것은 삭제
+  // (이전에 N-gram 합성으로 생성된 불필요 키워드 정리)
+  const existingMappings = await db.query(
+    `SELECT kpm.keyword_id, k.keyword
+     FROM keyword_product_mapping kpm
+     JOIN keywords k ON k.id = kpm.keyword_id
+     WHERE kpm.product_id = $1`,
+    [product.id]
+  );
+
+  const keywordSetLower = new Set(
+    Array.from(keywordSet).map((k) => k.toLowerCase())
+  );
+
+  for (const row of existingMappings.rows) {
+    if (!keywordSetLower.has(row.keyword.toLowerCase())) {
+      // 매핑 삭제
+      await db.query(
+        `DELETE FROM keyword_product_mapping
+         WHERE keyword_id = $1 AND product_id = $2`,
+        [row.keyword_id, product.id]
+      );
+
+      // 해당 키워드가 다른 상품에도 매핑되어 있지 않으면 keywords 테이블에서도 삭제
+      const otherMappings = await db.query(
+        `SELECT 1 FROM keyword_product_mapping WHERE keyword_id = $1 LIMIT 1`,
+        [row.keyword_id]
+      );
+      if (otherMappings.rows.length === 0) {
+        await db.query(`DELETE FROM keywords WHERE id = $1`, [row.keyword_id]);
+      }
+
+      logger.info(`합성 키워드 삭제: "${row.keyword}" (상품 ${product.id})`);
+    }
+  }
+
+  // 4. keywords 마스터 UPSERT + mapping 생성
   for (const keyword of keywordSet) {
     try {
       // keywords 마스터 UPSERT
