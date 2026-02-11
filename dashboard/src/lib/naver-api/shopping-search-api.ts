@@ -6,12 +6,6 @@
  * - 페이지네이션 검색 (최대 1000위까지)
  */
 
-import * as dotenv from 'dotenv';
-import * as path from 'path';
-
-// 루트 프로젝트의 .env 파일 로드
-dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
-
 const SHOPPING_API_BASE = 'https://openapi.naver.com';
 
 interface ShoppingSearchItem {
