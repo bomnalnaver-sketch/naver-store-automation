@@ -18,7 +18,6 @@ import {
   PRODUCT_OPTIMIZATION_SYSTEM_PROMPT,
 } from '@/prompts/product-optimization';
 import type {
-  ProductOptimizationSuggestion,
   ABTestPlan,
   AIDecision,
 } from '@/types/ai.types';
@@ -238,7 +237,7 @@ export class ProductAnalyzer {
         ]
       );
 
-      return result.rows[0].id;
+      return result.rows[0]!.id;
     } catch (error) {
       logger.error('Failed to record AI decision', { error });
       throw error;

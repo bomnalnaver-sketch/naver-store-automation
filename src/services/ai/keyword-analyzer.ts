@@ -19,7 +19,6 @@ import {
 } from '@/prompts/keyword-analysis';
 import type {
   KeywordWithStats,
-  KeywordAction,
   KeywordEvaluationResult,
   AIDecision,
 } from '@/types/ai.types';
@@ -160,7 +159,7 @@ export class KeywordAnalyzer {
         ]
       );
 
-      const decisionId = result.rows[0].id;
+      const decisionId = result.rows[0]!.id;
 
       logger.info('AI decision recorded', {
         decisionId,

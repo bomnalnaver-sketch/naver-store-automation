@@ -10,7 +10,6 @@
 import {
   DiscoveredKeyword,
   KeywordCandidate,
-  PopularityStage,
 } from '@/types/keyword.types';
 import { StageStrategy } from './popularity-stage';
 import { logger } from '@/utils/logger';

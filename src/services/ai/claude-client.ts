@@ -13,7 +13,7 @@ import { env } from '@/config/env';
 import { AI_CONFIG } from '@/config/app-config';
 import { retry } from '@/utils/retry';
 import { logger } from '@/utils/logger';
-import type { ClaudeMessage, ClaudeResponse } from '@/types/ai.types';
+import type { ClaudeMessage } from '@/types/ai.types';
 
 /**
  * Claude API 에러 클래스
@@ -216,7 +216,7 @@ export class ClaudeClient {
   private parseJsonResponse<T>(response: string): T {
     // JSON 코드 블록 추출 시도 (```json ... ```)
     const jsonBlockMatch = response.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
-    const jsonString = jsonBlockMatch ? jsonBlockMatch[1].trim() : response.trim();
+    const jsonString = jsonBlockMatch ? jsonBlockMatch[1]!.trim() : response.trim();
 
     try {
       const parsed = JSON.parse(jsonString);

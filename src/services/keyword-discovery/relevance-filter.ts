@@ -10,8 +10,6 @@
 import { shoppingSearchApi } from '@/services/naver-api/shopping-search-api';
 import {
   checkBlacklist,
-  isBlacklistedBrand,
-  isBlacklistedModifier,
 } from '@/config/brand-blacklist';
 import { DiscoveredKeyword } from '@/types/keyword.types';
 import { logger } from '@/utils/logger';

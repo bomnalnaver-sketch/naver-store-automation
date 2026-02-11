@@ -319,7 +319,7 @@ export async function detectColorChange(
 export async function saveColorClassification(
   keywordId: number,
   result: ColorClassificationResult,
-  analysisLogId?: number
+  _analysisLogId?: number
 ): Promise<void> {
   try {
     // keywords 테이블 업데이트

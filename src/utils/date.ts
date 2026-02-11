@@ -11,14 +11,14 @@
  * 날짜를 YYYY-MM-DD 형식으로 포맷
  */
 export function formatDate(date: Date): string {
-  return date.toISOString().split('T')[0];
+  return date.toISOString().split('T')[0]!;
 }
 
 /**
  * 날짜를 YYYY-MM-DD HH:mm:ss 형식으로 포맷
  */
 export function formatDateTime(date: Date): string {
-  return date.toISOString().replace('T', ' ').split('.')[0];
+  return date.toISOString().replace('T', ' ').split('.')[0]!;
 }
 
 /**

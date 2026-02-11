@@ -12,7 +12,6 @@
  * 토큰 버킷 알고리즘 사용
  */
 export class RateLimiter {
-  private queue: Array<() => void> = [];
   private tokens: number;
   private lastRefillTime: number;
   private readonly maxTokens: number;

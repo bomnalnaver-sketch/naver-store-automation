@@ -16,13 +16,10 @@ import {
 import {
   determinePopularityStage,
   getStageStrategy,
-  getProductStrategy,
-  StageStrategy,
 } from './popularity-stage';
 import { filterKeywords, filterCandidates } from './competition-filter';
 import {
   scoreKeywords,
-  sortByScore,
   selectTopKeywords,
   ScoredKeyword,
   logScoreAnalysis,
